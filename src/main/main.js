@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const { PolyCouncilOrchestrator } = require('./core/orchestrator');
 const { LMStudioClient } = require('./core/lmstudio-client');
 const { SettingsManager } = require('./core/settings');
@@ -240,7 +241,10 @@ ipcMain.handle('open-project', async () => {
   try {
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openDirectory'],
-      title: 'Open Project Folder'
+      title: 'Open Project Folder',
+      defaultPath: os.homedir(),
+      // Don't use filters - show all files and folders
+      // The openDirectory property allows selecting folders but still shows files
     });
 
     if (!result.canceled && result.filePaths.length > 0) {
@@ -248,23 +252,43 @@ ipcMain.handle('open-project', async () => {
       // Load all files from the project folder
       const files = {};
       const loadFiles = (dir, basePath = '') => {
-        const entries = fs.readdirSync(dir, { withFileTypes: true });
-        entries.forEach(entry => {
-          const fullPath = path.join(dir, entry.name);
-          const relativePath = basePath ? `${basePath}/${entry.name}` : entry.name;
-          if (entry.isDirectory()) {
-            loadFiles(fullPath, relativePath);
-          } else if (entry.isFile()) {
-            try {
-              const content = fs.readFileSync(fullPath, 'utf8');
-              files[relativePath] = content;
-            } catch (err) {
-              console.error(`Failed to read file ${fullPath}:`, err);
-            }
+        try {
+          if (!fs.existsSync(dir)) {
+            console.warn(`Directory does not exist: ${dir}`);
+            return;
           }
-        });
+          const entries = fs.readdirSync(dir, { withFileTypes: true });
+          entries.forEach(entry => {
+            const fullPath = path.join(dir, entry.name);
+            // Normalize path separators to forward slashes for consistency
+            const relativePath = basePath ? `${basePath}/${entry.name}` : entry.name;
+            const normalizedPath = relativePath.replace(/\\/g, '/');
+            
+            // Skip hidden files and common ignore patterns
+            if (entry.name.startsWith('.') || 
+                entry.name === 'node_modules' || 
+                entry.name === '.git') {
+              return;
+            }
+            
+            if (entry.isDirectory()) {
+              loadFiles(fullPath, relativePath);
+            } else if (entry.isFile()) {
+              try {
+                const content = fs.readFileSync(fullPath, 'utf8');
+                files[normalizedPath] = content;
+                console.log(`Loaded file: ${normalizedPath}`);
+              } catch (err) {
+                console.error(`Failed to read file ${fullPath}:`, err);
+              }
+            }
+          });
+        } catch (err) {
+          console.error(`Error reading directory ${dir}:`, err);
+        }
       };
       loadFiles(projectPath);
+      console.log(`Loaded ${Object.keys(files).length} files from ${projectPath}`);
       return { success: true, path: projectPath, files };
     }
     return { success: false, cancelled: true };
@@ -338,13 +362,51 @@ ipcMain.handle('run-code', async (event, filePath, language, code) => {
       return { success: false, error: 'No project folder selected' };
     }
 
+    if (!filePath || !filePath.trim()) {
+      return { success: false, error: 'No file specified to run' };
+    }
+
     const { spawn } = require('child_process');
-    const fullPath = path.join(projectPath, filePath);
     
-    // Ensure file exists
+    // Normalize the file path - handle both relative and absolute paths
+    let fullPath;
+    if (path.isAbsolute(filePath)) {
+      fullPath = filePath;
+    } else {
+      fullPath = path.join(projectPath, filePath);
+    }
+    
+    // Normalize the path to handle any path separators correctly
+    fullPath = path.normalize(fullPath);
+    
+    // Ensure the file exists, create it if it doesn't
     if (!fs.existsSync(fullPath)) {
+      // Ensure the directory exists
+      const dir = path.dirname(fullPath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      fs.writeFileSync(fullPath, code, 'utf8');
+    } else {
+      // File exists, update it with current code
       fs.writeFileSync(fullPath, code, 'utf8');
     }
+    
+    // Verify it's actually a file, not a directory
+    const stats = fs.statSync(fullPath);
+    if (!stats.isFile()) {
+      return { success: false, error: `Path is a directory, not a file: ${fullPath}` };
+    }
+
+    // Debug logging
+    console.log('Running code:', {
+      filePath,
+      projectPath,
+      fullPath,
+      language,
+      fileExists: fs.existsSync(fullPath),
+      isFile: stats.isFile()
+    });
 
     let command;
     let args = [];
@@ -353,6 +415,7 @@ ipcMain.handle('run-code', async (event, filePath, language, code) => {
     switch (language) {
       case 'javascript':
         command = 'node';
+        // Use normalized absolute path
         args = [fullPath];
         break;
       case 'typescript':
@@ -360,14 +423,20 @@ ipcMain.handle('run-code', async (event, filePath, language, code) => {
         args = [fullPath];
         break;
       case 'python':
+        // On Windows, ensure we use the full normalized path
         command = 'python';
+        // Use the absolute path, properly normalized
         args = [fullPath];
         break;
       case 'java': {
         // Java requires compilation first
         const className = path.basename(filePath, '.java');
         const classPath = path.dirname(fullPath);
-        const javaCompile = spawn('javac', [fullPath], { cwd: classPath });
+        const isWindows = process.platform === 'win32';
+        const javaCompile = spawn('javac', [fullPath], { 
+          cwd: classPath,
+          shell: isWindows ? false : true
+        });
         await new Promise((resolve, reject) => {
           javaCompile.on('close', (code) => {
             if (code === 0) {
@@ -388,7 +457,10 @@ ipcMain.handle('run-code', async (event, filePath, language, code) => {
         const outputName = path.basename(filePath, ext);
         const outputPath = path.join(path.dirname(fullPath), outputName);
         const compiler = language === 'cpp' ? 'g++' : 'gcc';
-        const cppCompile = spawn(compiler, [fullPath, '-o', outputPath]);
+        const isWindows = process.platform === 'win32';
+        const cppCompile = spawn(compiler, [fullPath, '-o', outputPath], {
+          shell: isWindows ? false : true
+        });
         await new Promise((resolve, reject) => {
           cppCompile.on('close', (code) => {
             if (code === 0) {
@@ -407,24 +479,44 @@ ipcMain.handle('run-code', async (event, filePath, language, code) => {
     }
 
     // Execute the code
-    const process = spawn(command, args, {
+    // On Windows, we need to handle paths with spaces carefully
+    const isWindows = process.platform === 'win32';
+    const spawnOptions = {
+      cwd: projectPath
+    };
+    
+    // For Windows with paths containing spaces, use shell: false
+    // This ensures paths are passed directly to the process without shell interpretation
+    if (isWindows) {
+      spawnOptions.shell = false;
+    } else {
+      spawnOptions.shell = true;
+    }
+    
+    // Additional debug logging
+    console.log('Spawning process:', {
+      command,
+      args,
       cwd: projectPath,
-      shell: true
+      shell: spawnOptions.shell,
+      platform: process.platform
     });
+    
+    const childProcess = spawn(command, args, spawnOptions);
 
     let stdout = '';
     let stderr = '';
 
-    process.stdout.on('data', (data) => {
+    childProcess.stdout.on('data', (data) => {
       stdout += data.toString();
     });
 
-    process.stderr.on('data', (data) => {
+    childProcess.stderr.on('data', (data) => {
       stderr += data.toString();
     });
 
     return new Promise((resolve) => {
-      process.on('close', (code) => {
+      childProcess.on('close', (code) => {
         resolve({
           success: code === 0,
           exitCode: code,
@@ -436,7 +528,7 @@ ipcMain.handle('run-code', async (event, filePath, language, code) => {
 
       // Timeout after 30 seconds
       setTimeout(() => {
-        process.kill();
+        childProcess.kill();
         resolve({
           success: false,
           error: 'Execution timeout (30 seconds)',

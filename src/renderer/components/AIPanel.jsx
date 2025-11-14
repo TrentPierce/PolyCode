@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 function AIPanel({ activeFile, code, language, models, isConnected, files = {}, onCodeGenerated, onDeliberationUpdate }) {
   const [prompt, setPrompt] = useState('');
@@ -10,6 +10,87 @@ function AIPanel({ activeFile, code, language, models, isConnected, files = {}, 
   const [deliberationMessages, setDeliberationMessages] = useState([]);
   const [currentPhase, setCurrentPhase] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
+  const textareaRef = useRef(null);
+
+  // Safety check: Ensure loading state doesn't get stuck
+  useEffect(() => {
+    // Reset loading state if it's been stuck for more than 5 minutes (shouldn't happen, but safety net)
+    if (loading) {
+      const timeout = setTimeout(() => {
+        console.warn('Loading state stuck for 5 minutes, resetting...');
+        setLoading(false);
+        setCurrentPhase('');
+        setProgressPercent(0);
+      }, 5 * 60 * 1000);
+      return () => clearTimeout(timeout);
+    }
+  }, [loading]);
+
+  // Debug: Log state changes to help diagnose issues
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('AIPanel state changed:', { loading, isConnected, hasPrompt: !!prompt.trim() });
+    }
+  }, [loading, isConnected, prompt]);
+
+  // Safety mechanism: Ensure loading state is reset if it's been false for a while
+  // This helps recover from cases where the UI gets stuck
+  useEffect(() => {
+    if (!loading) {
+      // If loading is false, ensure all related states are also reset
+      const checkInterval = setInterval(() => {
+        if (!loading && (currentPhase || progressPercent > 0)) {
+          console.warn('Resetting stuck progress state');
+          setCurrentPhase('');
+          setProgressPercent(0);
+        }
+      }, 1000);
+      return () => clearInterval(checkInterval);
+    }
+  }, [loading, currentPhase, progressPercent]);
+
+  // Force enable textarea when loading becomes false
+  useEffect(() => {
+    if (!loading && textareaRef.current) {
+      // Force enable the textarea
+      textareaRef.current.disabled = false;
+      textareaRef.current.readOnly = false;
+      // Force a re-render by focusing and blurring
+      if (document.activeElement !== textareaRef.current) {
+        textareaRef.current.focus();
+        setTimeout(() => {
+          if (textareaRef.current && document.activeElement !== textareaRef.current) {
+            textareaRef.current.blur();
+          }
+        }, 10);
+      }
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Forced textarea enable, disabled:', textareaRef.current.disabled);
+      }
+    }
+  }, [loading]);
+
+  // Listen for window events that might indicate a re-render is needed
+  useEffect(() => {
+    const handleWindowEvent = () => {
+      // Force enable textarea when window regains focus or is resized
+      if (!loading && textareaRef.current && textareaRef.current.disabled) {
+        console.warn('Window event detected, forcing textarea enable');
+        textareaRef.current.disabled = false;
+        textareaRef.current.readOnly = false;
+      }
+    };
+
+    window.addEventListener('focus', handleWindowEvent);
+    window.addEventListener('resize', handleWindowEvent);
+    window.addEventListener('visibilitychange', handleWindowEvent);
+
+    return () => {
+      window.removeEventListener('focus', handleWindowEvent);
+      window.removeEventListener('resize', handleWindowEvent);
+      window.removeEventListener('visibilitychange', handleWindowEvent);
+    };
+  }, [loading]);
 
   // Note: IPC listener is set up dynamically in handleGenerate to ensure it's active during generation
 
@@ -286,11 +367,44 @@ function AIPanel({ activeFile, code, language, models, isConnected, files = {}, 
             <div className="ai-input-group">
               <label>Prompt</label>
               <textarea
+                ref={textareaRef}
                 value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
+                onChange={(e) => {
+                  // Always allow onChange - don't block it based on loading state
+                  setPrompt(e.target.value);
+                }}
                 placeholder="Describe what code you want to generate..."
                 disabled={loading}
-                readOnly={loading}
+                readOnly={false}
+                onFocus={(e) => {
+                  // Debug: Log focus event
+                  if (process.env.NODE_ENV === 'development') {
+                    console.log('Textarea focused, loading:', loading, 'isConnected:', isConnected, 'disabled:', e.target.disabled);
+                  }
+                  // Force enable if loading is false but somehow disabled
+                  if (!loading && e.target.disabled) {
+                    console.warn('Textarea is disabled but loading is false, forcing enable');
+                    e.target.disabled = false;
+                    e.target.readOnly = false;
+                  }
+                }}
+                onBlur={(e) => {
+                  if (process.env.NODE_ENV === 'development') {
+                    console.log('Textarea blurred');
+                  }
+                }}
+                onKeyDown={(e) => {
+                  // Debug: Log key events to see if input is being blocked
+                  if (process.env.NODE_ENV === 'development' && e.key.length === 1) {
+                    console.log('Key pressed in textarea:', e.key, 'loading:', loading, 'disabled:', e.currentTarget.disabled);
+                  }
+                  // Force enable on key press if somehow disabled
+                  if (!loading && e.currentTarget.disabled) {
+                    console.warn('Textarea disabled on keypress but loading is false, forcing enable');
+                    e.currentTarget.disabled = false;
+                    e.currentTarget.readOnly = false;
+                  }
+                }}
                 style={{ 
                   cursor: loading ? 'not-allowed' : 'text',
                   opacity: loading ? 0.6 : 1,
@@ -303,6 +417,12 @@ function AIPanel({ activeFile, code, language, models, isConnected, files = {}, 
               onClick={handleGenerate}
               disabled={!prompt.trim() || loading || !isConnected}
               title={!isConnected ? 'Please connect to LMStudio first (check Settings)' : !prompt.trim() ? 'Enter a prompt' : loading ? 'Generating...' : 'Generate Code'}
+              onMouseEnter={() => {
+                // Debug: Log state when hovering over button
+                if (process.env.NODE_ENV === 'development') {
+                  console.log('AIPanel state:', { loading, isConnected, hasPrompt: !!prompt.trim() });
+                }
+              }}
             >
               {loading ? 'Generating...' : !isConnected ? 'Not Connected' : 'Generate Code'}
             </button>

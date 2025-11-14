@@ -6,6 +6,7 @@ import AIPanel from './components/AIPanel';
 import StatusBar from './components/StatusBar';
 import Settings from './components/Settings';
 import DeliberationChat from './components/DeliberationChat';
+import OutputModal from './components/OutputModal';
 import './styles/main.css';
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
   const [deliberationMessages, setDeliberationMessages] = useState([]);
   const [activeTab, setActiveTab] = useState('editor'); // 'editor' or 'deliberation'
   const [fileVersions, setFileVersions] = useState({}); // Track previous versions for diff
+  const [outputModal, setOutputModal] = useState({ isOpen: false, title: '', message: '', isError: false });
 
   useEffect(() => {
     // Check LMStudio connection and load models
@@ -271,14 +273,23 @@ function App() {
 
   const handleOpenProject = async () => {
     const result = await window.electronAPI.openProject();
-    if (result.success && result.files) {
+    console.log('Open project result:', result);
+    if (result.success) {
       setProjectPath(result.path);
-      setFiles(result.files);
-      // Open first file if available
-      const firstFile = Object.keys(result.files)[0];
-      if (firstFile) {
-        handleFileSelect(firstFile, result.files[firstFile]);
+      if (result.files && Object.keys(result.files).length > 0) {
+        console.log(`Setting ${Object.keys(result.files).length} files in state`);
+        setFiles(result.files);
+        // Open first file if available
+        const firstFile = Object.keys(result.files)[0];
+        if (firstFile) {
+          handleFileSelect(firstFile, result.files[firstFile]);
+        }
+      } else {
+        console.warn('No files found in project folder');
+        setFiles({});
       }
+    } else if (!result.cancelled) {
+      console.error('Failed to open project:', result.error);
     }
   };
 
@@ -296,24 +307,94 @@ function App() {
     }
   };
 
-  const handleRunCode = async (filePath, language, code) => {
+  const handleRunCode = async (editorContent) => {
+    // Use the currently open file in the editor
+    if (!activeFile) {
+      alert('No file is currently open. Please open a file to run.');
+      return;
+    }
+
     if (!projectPath) {
       alert('Please select a project folder first (New Project or Open Project)');
       return;
     }
 
+    // Use the content from the editor if provided, otherwise fall back to files state
+    const currentCode = editorContent || files[activeFile] || '';
+    if (!currentCode.trim()) {
+      alert('The current file is empty. Nothing to run.');
+      return;
+    }
+
+    // Update files state with the latest content from editor
+    if (editorContent && editorContent !== files[activeFile]) {
+      setFiles(prev => ({
+        ...prev,
+        [activeFile]: editorContent
+      }));
+    }
+
+    // Detect language from file extension if not already set
+    let detectedLanguage = language;
+    if (!detectedLanguage || detectedLanguage === 'javascript') {
+      const ext = activeFile.split('.').pop()?.toLowerCase();
+      const langMap = {
+        'js': 'javascript',
+        'jsx': 'javascript',
+        'ts': 'typescript',
+        'tsx': 'typescript',
+        'py': 'python',
+        'java': 'java',
+        'cpp': 'cpp',
+        'c': 'c',
+        'html': 'html',
+        'css': 'css'
+      };
+      detectedLanguage = langMap[ext] || 'javascript';
+    }
+
+    // Ensure the file is saved before running
     try {
-      const result = await window.electronAPI.runCode(filePath, language, code);
+      await window.electronAPI.saveFile(activeFile, currentCode);
+    } catch (error) {
+      console.warn('Failed to save file before running:', error);
+    }
+
+    // Debug logging
+    console.log('Running file:', {
+      activeFile,
+      projectPath,
+      language: detectedLanguage,
+      filePathLength: activeFile.length
+    });
+
+    try {
+      const result = await window.electronAPI.runCode(activeFile, detectedLanguage, currentCode);
       if (result.success) {
-        // Show output in a dialog or terminal panel
+        // Show output in a non-blocking modal
         const output = result.output || result.stdout || 'Code executed successfully!';
-        alert(`Output:\n\n${output}`);
+        setOutputModal({
+          isOpen: true,
+          title: 'Code Execution Output',
+          message: output,
+          isError: false
+        });
       } else {
         const errorMsg = result.error || result.stderr || 'Execution failed';
-        alert(`Error:\n\n${errorMsg}`);
+        setOutputModal({
+          isOpen: true,
+          title: 'Execution Error',
+          message: errorMsg,
+          isError: true
+        });
       }
     } catch (error) {
-      alert(`Failed to run code: ${error.message}`);
+      setOutputModal({
+        isOpen: true,
+        title: 'Execution Failed',
+        message: error.message,
+        isError: true
+      });
     }
   };
 
@@ -410,6 +491,13 @@ function App() {
           // Reload connection status after settings change
           checkConnection();
         }}
+      />
+      <OutputModal
+        isOpen={outputModal.isOpen}
+        title={outputModal.title}
+        message={outputModal.message}
+        isError={outputModal.isError}
+        onClose={() => setOutputModal({ isOpen: false, title: '', message: '', isError: false })}
       />
     </div>
   );

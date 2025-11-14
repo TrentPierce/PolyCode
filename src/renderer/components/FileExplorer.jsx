@@ -1,9 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 function FileExplorer({ files, onFileSelect, onFileCreate, activeFile, projectPath, onNewProject, onOpenProject, onSaveProject }) {
   const [expandedFolders, setExpandedFolders] = useState({});
   const [showNewFileInput, setShowNewFileInput] = useState(false);
   const [newFileName, setNewFileName] = useState('');
+
+  // Debug: Log files when they change
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('FileExplorer received files:', Object.keys(files).length, 'files');
+      if (Object.keys(files).length > 0) {
+        console.log('File paths:', Object.keys(files));
+      }
+    }
+  }, [files]);
 
   const toggleFolder = (folder) => {
     setExpandedFolders(prev => ({
@@ -162,48 +172,59 @@ function FileExplorer({ files, onFileSelect, onFileCreate, activeFile, projectPa
         </div>
       )}
 
-      <ul className="file-tree">
-        {Object.keys(folders).map(folder => (
-          <li key={folder}>
-            <div
-              className="file-item"
-              onClick={() => toggleFolder(folder)}
-              style={{ color: '#858585' }}
-            >
-              <span className="file-icon">
-                {expandedFolders[folder] ? '📂' : '📁'}
-              </span>
-              {folder}
-            </div>
-            {expandedFolders[folder] && (
-              <ul style={{ marginLeft: '1rem', listStyle: 'none' }}>
-                {folders[folder].map(filePath => (
-                  <li key={filePath}>
-                    <div
-                      className={`file-item ${activeFile === filePath ? 'active' : ''}`}
-                      onClick={() => onFileSelect(filePath, files[filePath])}
-                    >
-                      <span className="file-icon">{getFileIcon(filePath)}</span>
-                      {filePath.split('/').pop()}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </li>
-        ))}
-        {rootFiles.map(filePath => (
-          <li key={filePath}>
-            <div
-              className={`file-item ${activeFile === filePath ? 'active' : ''}`}
-              onClick={() => onFileSelect(filePath, files[filePath])}
-            >
-              <span className="file-icon">{getFileIcon(filePath)}</span>
-              {filePath}
-            </div>
-          </li>
-        ))}
-      </ul>
+      {Object.keys(files).length === 0 ? (
+        <div style={{ 
+          padding: '1rem', 
+          color: '#858585', 
+          fontSize: '0.85rem',
+          textAlign: 'center'
+        }}>
+          {projectPath ? 'No files in project folder' : 'No project folder selected'}
+        </div>
+      ) : (
+        <ul className="file-tree">
+          {Object.keys(folders).map(folder => (
+            <li key={folder}>
+              <div
+                className="file-item"
+                onClick={() => toggleFolder(folder)}
+                style={{ color: '#858585' }}
+              >
+                <span className="file-icon">
+                  {expandedFolders[folder] ? '📂' : '📁'}
+                </span>
+                {folder}
+              </div>
+              {expandedFolders[folder] && (
+                <ul style={{ marginLeft: '1rem', listStyle: 'none' }}>
+                  {folders[folder].map(filePath => (
+                    <li key={filePath}>
+                      <div
+                        className={`file-item ${activeFile === filePath ? 'active' : ''}`}
+                        onClick={() => onFileSelect(filePath, files[filePath])}
+                      >
+                        <span className="file-icon">{getFileIcon(filePath)}</span>
+                        {filePath.split('/').pop()}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          ))}
+          {rootFiles.map(filePath => (
+            <li key={filePath}>
+              <div
+                className={`file-item ${activeFile === filePath ? 'active' : ''}`}
+                onClick={() => onFileSelect(filePath, files[filePath])}
+              >
+                <span className="file-icon">{getFileIcon(filePath)}</span>
+                {filePath}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

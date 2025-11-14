@@ -36719,6 +36719,89 @@ function AIPanel({
   const [deliberationMessages, setDeliberationMessages] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
   const [currentPhase, setCurrentPhase] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('');
   const [progressPercent, setProgressPercent] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(0);
+  const textareaRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(null);
+
+  // Safety check: Ensure loading state doesn't get stuck
+  (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
+    // Reset loading state if it's been stuck for more than 5 minutes (shouldn't happen, but safety net)
+    if (loading) {
+      const timeout = setTimeout(() => {
+        console.warn('Loading state stuck for 5 minutes, resetting...');
+        setLoading(false);
+        setCurrentPhase('');
+        setProgressPercent(0);
+      }, 5 * 60 * 1000);
+      return () => clearTimeout(timeout);
+    }
+  }, [loading]);
+
+  // Debug: Log state changes to help diagnose issues
+  (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
+    if (true) {
+      console.log('AIPanel state changed:', {
+        loading,
+        isConnected,
+        hasPrompt: !!prompt.trim()
+      });
+    }
+  }, [loading, isConnected, prompt]);
+
+  // Safety mechanism: Ensure loading state is reset if it's been false for a while
+  // This helps recover from cases where the UI gets stuck
+  (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
+    if (!loading) {
+      // If loading is false, ensure all related states are also reset
+      const checkInterval = setInterval(() => {
+        if (!loading && (currentPhase || progressPercent > 0)) {
+          console.warn('Resetting stuck progress state');
+          setCurrentPhase('');
+          setProgressPercent(0);
+        }
+      }, 1000);
+      return () => clearInterval(checkInterval);
+    }
+  }, [loading, currentPhase, progressPercent]);
+
+  // Force enable textarea when loading becomes false
+  (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
+    if (!loading && textareaRef.current) {
+      // Force enable the textarea
+      textareaRef.current.disabled = false;
+      textareaRef.current.readOnly = false;
+      // Force a re-render by focusing and blurring
+      if (document.activeElement !== textareaRef.current) {
+        textareaRef.current.focus();
+        setTimeout(() => {
+          if (textareaRef.current && document.activeElement !== textareaRef.current) {
+            textareaRef.current.blur();
+          }
+        }, 10);
+      }
+      if (true) {
+        console.log('Forced textarea enable, disabled:', textareaRef.current.disabled);
+      }
+    }
+  }, [loading]);
+
+  // Listen for window events that might indicate a re-render is needed
+  (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
+    const handleWindowEvent = () => {
+      // Force enable textarea when window regains focus or is resized
+      if (!loading && textareaRef.current && textareaRef.current.disabled) {
+        console.warn('Window event detected, forcing textarea enable');
+        textareaRef.current.disabled = false;
+        textareaRef.current.readOnly = false;
+      }
+    };
+    window.addEventListener('focus', handleWindowEvent);
+    window.addEventListener('resize', handleWindowEvent);
+    window.addEventListener('visibilitychange', handleWindowEvent);
+    return () => {
+      window.removeEventListener('focus', handleWindowEvent);
+      window.removeEventListener('resize', handleWindowEvent);
+      window.removeEventListener('visibilitychange', handleWindowEvent);
+    };
+  }, [loading]);
 
   // Note: IPC listener is set up dynamically in handleGenerate to ensure it's active during generation
 
@@ -36999,11 +37082,44 @@ function AIPanel({
           children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("label", {
             children: "Prompt"
           }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("textarea", {
+            ref: textareaRef,
             value: prompt,
-            onChange: e => setPrompt(e.target.value),
+            onChange: e => {
+              // Always allow onChange - don't block it based on loading state
+              setPrompt(e.target.value);
+            },
             placeholder: "Describe what code you want to generate...",
             disabled: loading,
-            readOnly: loading,
+            readOnly: false,
+            onFocus: e => {
+              // Debug: Log focus event
+              if (true) {
+                console.log('Textarea focused, loading:', loading, 'isConnected:', isConnected, 'disabled:', e.target.disabled);
+              }
+              // Force enable if loading is false but somehow disabled
+              if (!loading && e.target.disabled) {
+                console.warn('Textarea is disabled but loading is false, forcing enable');
+                e.target.disabled = false;
+                e.target.readOnly = false;
+              }
+            },
+            onBlur: e => {
+              if (true) {
+                console.log('Textarea blurred');
+              }
+            },
+            onKeyDown: e => {
+              // Debug: Log key events to see if input is being blocked
+              if ( true && e.key.length === 1) {
+                console.log('Key pressed in textarea:', e.key, 'loading:', loading, 'disabled:', e.currentTarget.disabled);
+              }
+              // Force enable on key press if somehow disabled
+              if (!loading && e.currentTarget.disabled) {
+                console.warn('Textarea disabled on keypress but loading is false, forcing enable');
+                e.currentTarget.disabled = false;
+                e.currentTarget.readOnly = false;
+              }
+            },
             style: {
               cursor: loading ? 'not-allowed' : 'text',
               opacity: loading ? 0.6 : 1,
@@ -37015,6 +37131,16 @@ function AIPanel({
           onClick: handleGenerate,
           disabled: !prompt.trim() || loading || !isConnected,
           title: !isConnected ? 'Please connect to LMStudio first (check Settings)' : !prompt.trim() ? 'Enter a prompt' : loading ? 'Generating...' : 'Generate Code',
+          onMouseEnter: () => {
+            // Debug: Log state when hovering over button
+            if (true) {
+              console.log('AIPanel state:', {
+                loading,
+                isConnected,
+                hasPrompt: !!prompt.trim()
+              });
+            }
+          },
           children: loading ? 'Generating...' : !isConnected ? 'Not Connected' : 'Generate Code'
         }), loading && mode === 'generate' && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
           style: {
@@ -37792,7 +37918,7 @@ function Editor({
     if (onRun) {
       editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyR, () => {
         const currentContent = editor.getValue();
-        onRun(filePath, language, currentContent);
+        onRun(currentContent);
       });
     }
 
@@ -37841,7 +37967,11 @@ function Editor({
         })]
       }), onRun && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("button", {
         className: "run-button",
-        onClick: () => onRun(filePath, language, editorContent),
+        onClick: () => {
+          // Get the latest content directly from the editor
+          const currentContent = editorRef.current ? editorRef.current.getValue() : editorContent;
+          onRun(currentContent);
+        },
         title: "Run Code (Ctrl+R)",
         children: "\u25B6 Run"
       })]
@@ -37904,6 +38034,16 @@ function FileExplorer({
   const [expandedFolders, setExpandedFolders] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({});
   const [showNewFileInput, setShowNewFileInput] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false);
   const [newFileName, setNewFileName] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('');
+
+  // Debug: Log files when they change
+  (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
+    if (true) {
+      console.log('FileExplorer received files:', Object.keys(files).length, 'files');
+      if (Object.keys(files).length > 0) {
+        console.log('File paths:', Object.keys(files));
+      }
+    }
+  }, [files]);
   const toggleFolder = folder => {
     setExpandedFolders(prev => ({
       ...prev,
@@ -38056,7 +38196,15 @@ function FileExplorer({
         },
         autoFocus: true
       })
-    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("ul", {
+    }), Object.keys(files).length === 0 ? /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("div", {
+      style: {
+        padding: '1rem',
+        color: '#858585',
+        fontSize: '0.85rem',
+        textAlign: 'center'
+      },
+      children: projectPath ? 'No files in project folder' : 'No project folder selected'
+    }) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("ul", {
       className: "file-tree",
       children: [Object.keys(folders).map(folder => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("li", {
         children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
@@ -38099,6 +38247,131 @@ function FileExplorer({
   });
 }
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (FileExplorer);
+
+/***/ }),
+
+/***/ "./src/renderer/components/OutputModal.jsx":
+/*!*************************************************!*\
+  !*** ./src/renderer/components/OutputModal.jsx ***!
+  \*************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react */ "./node_modules/react/index.js");
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! react/jsx-runtime */ "./node_modules/react/jsx-runtime.js");
+
+
+function OutputModal({
+  isOpen,
+  onClose,
+  title,
+  message,
+  isError = false
+}) {
+  if (!isOpen) return null;
+  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("div", {
+    className: "output-modal-overlay",
+    onClick: onClose,
+    style: {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 10000
+    },
+    children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+      className: "output-modal",
+      onClick: e => e.stopPropagation(),
+      style: {
+        background: '#1e1e1e',
+        border: `1px solid ${isError ? '#ff6b6b' : '#4ec9b0'}`,
+        borderRadius: '8px',
+        padding: '1.5rem',
+        maxWidth: '600px',
+        width: '90%',
+        maxHeight: '80vh',
+        overflow: 'auto',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
+      },
+      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+        style: {
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '1rem',
+          borderBottom: '1px solid #3e3e42',
+          paddingBottom: '0.5rem'
+        },
+        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("h3", {
+          style: {
+            margin: 0,
+            color: isError ? '#ff6b6b' : '#4ec9b0',
+            fontSize: '1.1rem'
+          },
+          children: title || (isError ? 'Error' : 'Output')
+        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("button", {
+          onClick: onClose,
+          style: {
+            background: 'transparent',
+            border: 'none',
+            color: '#858585',
+            fontSize: '1.5rem',
+            cursor: 'pointer',
+            padding: '0 0.5rem',
+            lineHeight: '1'
+          },
+          onMouseEnter: e => e.target.style.color = '#fff',
+          onMouseLeave: e => e.target.style.color = '#858585',
+          children: "\xD7"
+        })]
+      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("div", {
+        style: {
+          color: '#d4d4d4',
+          whiteSpace: 'pre-wrap',
+          wordWrap: 'break-word',
+          fontFamily: 'monospace',
+          fontSize: '0.9rem',
+          lineHeight: '1.5',
+          maxHeight: '60vh',
+          overflow: 'auto'
+        },
+        children: message
+      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("div", {
+        style: {
+          marginTop: '1rem',
+          display: 'flex',
+          justifyContent: 'flex-end'
+        },
+        children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("button", {
+          onClick: onClose,
+          style: {
+            background: '#4ec9b0',
+            border: 'none',
+            color: '#1e1e1e',
+            padding: '0.5rem 1.5rem',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '0.9rem',
+            fontWeight: '600'
+          },
+          onMouseEnter: e => e.target.style.background = '#5ddcc0',
+          onMouseLeave: e => e.target.style.background = '#4ec9b0',
+          children: "OK"
+        })
+      })]
+    })
+  });
+}
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (OutputModal);
 
 /***/ }),
 
@@ -38568,8 +38841,10 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _components_StatusBar__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./components/StatusBar */ "./src/renderer/components/StatusBar.jsx");
 /* harmony import */ var _components_Settings__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./components/Settings */ "./src/renderer/components/Settings.jsx");
 /* harmony import */ var _components_DeliberationChat__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./components/DeliberationChat */ "./src/renderer/components/DeliberationChat.jsx");
-/* harmony import */ var _styles_main_css__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./styles/main.css */ "./src/renderer/styles/main.css");
-/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! react/jsx-runtime */ "./node_modules/react/jsx-runtime.js");
+/* harmony import */ var _components_OutputModal__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./components/OutputModal */ "./src/renderer/components/OutputModal.jsx");
+/* harmony import */ var _styles_main_css__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./styles/main.css */ "./src/renderer/styles/main.css");
+/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! react/jsx-runtime */ "./node_modules/react/jsx-runtime.js");
+
 
 
 
@@ -38591,7 +38866,12 @@ function App() {
   const [deliberationMessages, setDeliberationMessages] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
   const [activeTab, setActiveTab] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('editor'); // 'editor' or 'deliberation'
   const [fileVersions, setFileVersions] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({}); // Track previous versions for diff
-
+  const [outputModal, setOutputModal] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
+    isOpen: false,
+    title: '',
+    message: '',
+    isError: false
+  });
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
     // Check LMStudio connection and load models
     checkConnection();
@@ -38825,14 +39105,23 @@ function App() {
   };
   const handleOpenProject = async () => {
     const result = await window.electronAPI.openProject();
-    if (result.success && result.files) {
+    console.log('Open project result:', result);
+    if (result.success) {
       setProjectPath(result.path);
-      setFiles(result.files);
-      // Open first file if available
-      const firstFile = Object.keys(result.files)[0];
-      if (firstFile) {
-        handleFileSelect(firstFile, result.files[firstFile]);
+      if (result.files && Object.keys(result.files).length > 0) {
+        console.log(`Setting ${Object.keys(result.files).length} files in state`);
+        setFiles(result.files);
+        // Open first file if available
+        const firstFile = Object.keys(result.files)[0];
+        if (firstFile) {
+          handleFileSelect(firstFile, result.files[firstFile]);
+        }
+      } else {
+        console.warn('No files found in project folder');
+        setFiles({});
       }
+    } else if (!result.cancelled) {
+      console.error('Failed to open project:', result.error);
     }
   };
   const handleSaveProject = async () => {
@@ -38848,23 +39137,92 @@ function App() {
       alert(`Failed to save project: ${result.error}`);
     }
   };
-  const handleRunCode = async (filePath, language, code) => {
+  const handleRunCode = async editorContent => {
+    // Use the currently open file in the editor
+    if (!activeFile) {
+      alert('No file is currently open. Please open a file to run.');
+      return;
+    }
     if (!projectPath) {
       alert('Please select a project folder first (New Project or Open Project)');
       return;
     }
+
+    // Use the content from the editor if provided, otherwise fall back to files state
+    const currentCode = editorContent || files[activeFile] || '';
+    if (!currentCode.trim()) {
+      alert('The current file is empty. Nothing to run.');
+      return;
+    }
+
+    // Update files state with the latest content from editor
+    if (editorContent && editorContent !== files[activeFile]) {
+      setFiles(prev => ({
+        ...prev,
+        [activeFile]: editorContent
+      }));
+    }
+
+    // Detect language from file extension if not already set
+    let detectedLanguage = language;
+    if (!detectedLanguage || detectedLanguage === 'javascript') {
+      const ext = activeFile.split('.').pop()?.toLowerCase();
+      const langMap = {
+        'js': 'javascript',
+        'jsx': 'javascript',
+        'ts': 'typescript',
+        'tsx': 'typescript',
+        'py': 'python',
+        'java': 'java',
+        'cpp': 'cpp',
+        'c': 'c',
+        'html': 'html',
+        'css': 'css'
+      };
+      detectedLanguage = langMap[ext] || 'javascript';
+    }
+
+    // Ensure the file is saved before running
     try {
-      const result = await window.electronAPI.runCode(filePath, language, code);
+      await window.electronAPI.saveFile(activeFile, currentCode);
+    } catch (error) {
+      console.warn('Failed to save file before running:', error);
+    }
+
+    // Debug logging
+    console.log('Running file:', {
+      activeFile,
+      projectPath,
+      language: detectedLanguage,
+      filePathLength: activeFile.length
+    });
+    try {
+      const result = await window.electronAPI.runCode(activeFile, detectedLanguage, currentCode);
       if (result.success) {
-        // Show output in a dialog or terminal panel
+        // Show output in a non-blocking modal
         const output = result.output || result.stdout || 'Code executed successfully!';
-        alert(`Output:\n\n${output}`);
+        setOutputModal({
+          isOpen: true,
+          title: 'Code Execution Output',
+          message: output,
+          isError: false
+        });
       } else {
         const errorMsg = result.error || result.stderr || 'Execution failed';
-        alert(`Error:\n\n${errorMsg}`);
+        setOutputModal({
+          isOpen: true,
+          title: 'Execution Error',
+          message: errorMsg,
+          isError: true
+        });
       }
     } catch (error) {
-      alert(`Failed to run code: ${error.message}`);
+      setOutputModal({
+        isOpen: true,
+        title: 'Execution Failed',
+        message: error.message,
+        isError: true
+      });
     }
   };
 
@@ -38876,11 +39234,11 @@ function App() {
       // Cleanup if needed
     };
   }, [files]);
-  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsxs)("div", {
+  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsxs)("div", {
     className: "app-container",
-    children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)("div", {
+    children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsx)("div", {
       className: "sidebar",
-      children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)(_components_FileExplorer__WEBPACK_IMPORTED_MODULE_3__["default"], {
+      children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsx)(_components_FileExplorer__WEBPACK_IMPORTED_MODULE_3__["default"], {
         files: files,
         onFileSelect: handleFileSelect,
         onFileCreate: handleFileCreate,
@@ -38890,25 +39248,25 @@ function App() {
         onOpenProject: handleOpenProject,
         onSaveProject: handleSaveProject
       })
-    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsxs)("div", {
+    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsxs)("div", {
       className: "main-content",
-      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsxs)("div", {
+      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsxs)("div", {
         className: "editor-container",
-        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)("div", {
+        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsx)("div", {
           className: "editor-tabs-container",
-          children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsxs)("div", {
+          children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsxs)("div", {
             className: "editor-tab-bar",
-            children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)("button", {
+            children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsx)("button", {
               className: `editor-tab-button ${activeTab === 'editor' ? 'active' : ''}`,
               onClick: () => setActiveTab('editor'),
               children: "\uD83D\uDCDD Editor"
-            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)("button", {
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsx)("button", {
               className: `editor-tab-button ${activeTab === 'deliberation' ? 'active' : ''}`,
               onClick: () => setActiveTab('deliberation'),
               children: "\uD83E\uDD16 Deliberation"
             })]
           })
-        }), activeTab === 'editor' ? activeFile ? /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)(_components_Editor__WEBPACK_IMPORTED_MODULE_2__["default"], {
+        }), activeTab === 'editor' ? activeFile ? /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsx)(_components_Editor__WEBPACK_IMPORTED_MODULE_2__["default"], {
           filePath: activeFile,
           content: files[activeFile] || '',
           previousContent: fileVersions[activeFile],
@@ -38916,24 +39274,24 @@ function App() {
           onSave: handleFileSave,
           onContentChange: content => handleEditorContentChange(activeFile, content),
           onRun: handleRunCode
-        }) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsxs)("div", {
+        }) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsxs)("div", {
           className: "welcome-screen",
-          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)("h1", {
+          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsx)("h1", {
             children: "PolyCode IDE"
-          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)("p", {
+          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsx)("p", {
             children: "AI-Powered IDE with Multi-Model Deliberation"
-          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)("p", {
+          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsx)("p", {
             className: "status",
             children: isConnected ? '✓ Connected to LMStudio' : '✗ LMStudio not connected'
-          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)("p", {
+          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsx)("p", {
             className: "hint",
             children: "Open a file or create a new one to get started"
           })]
-        }) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)(_components_DeliberationChat__WEBPACK_IMPORTED_MODULE_7__["default"], {
+        }) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsx)(_components_DeliberationChat__WEBPACK_IMPORTED_MODULE_7__["default"], {
           messages: deliberationMessages,
           isActive: activeTab === 'deliberation'
         })]
-      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)(_components_AIPanel__WEBPACK_IMPORTED_MODULE_4__["default"], {
+      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsx)(_components_AIPanel__WEBPACK_IMPORTED_MODULE_4__["default"], {
         activeFile: activeFile,
         code: activeFile ? files[activeFile] : '',
         language: language,
@@ -38943,24 +39301,35 @@ function App() {
         onCodeGenerated: handleCodeGenerated,
         onDeliberationUpdate: messages => setDeliberationMessages(messages)
       })]
-    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)(_components_StatusBar__WEBPACK_IMPORTED_MODULE_5__["default"], {
+    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsx)(_components_StatusBar__WEBPACK_IMPORTED_MODULE_5__["default"], {
       language: language,
       isConnected: isConnected,
       activeFile: activeFile,
       onSettingsClick: () => setShowSettings(true)
-    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)(_components_Settings__WEBPACK_IMPORTED_MODULE_6__["default"], {
+    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsx)(_components_Settings__WEBPACK_IMPORTED_MODULE_6__["default"], {
       isOpen: showSettings,
       onClose: () => {
         setShowSettings(false);
         // Reload connection status after settings change
         checkConnection();
       }
+    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsx)(_components_OutputModal__WEBPACK_IMPORTED_MODULE_8__["default"], {
+      isOpen: outputModal.isOpen,
+      title: outputModal.title,
+      message: outputModal.message,
+      isError: outputModal.isError,
+      onClose: () => setOutputModal({
+        isOpen: false,
+        title: '',
+        message: '',
+        isError: false
+      })
     })]
   });
 }
 const container = document.getElementById('root');
 const root = (0,react_dom_client__WEBPACK_IMPORTED_MODULE_1__.createRoot)(container);
-root.render(/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)(App, {}));
+root.render(/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_10__.jsx)(App, {}));
 })();
 
 /******/ })()

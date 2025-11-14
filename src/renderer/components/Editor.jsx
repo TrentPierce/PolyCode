@@ -119,7 +119,7 @@ function Editor({ filePath, content, language, previousContent, onSave, onConten
     if (onRun) {
       editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyR, () => {
         const currentContent = editor.getValue();
-        onRun(filePath, language, currentContent);
+        onRun(currentContent);
       });
     }
     
@@ -168,7 +168,11 @@ function Editor({ filePath, content, language, previousContent, onSave, onConten
         {onRun && (
           <button
             className="run-button"
-            onClick={() => onRun(filePath, language, editorContent)}
+            onClick={() => {
+              // Get the latest content directly from the editor
+              const currentContent = editorRef.current ? editorRef.current.getValue() : editorContent;
+              onRun(currentContent);
+            }}
             title="Run Code (Ctrl+R)"
           >
             ▶ Run
