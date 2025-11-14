@@ -19,7 +19,7 @@ class LMStudioClient {
       headers: {
         'Content-Type': 'application/json'
       },
-      timeout: 120000 // 2 minutes for large code generation
+      timeout: 600000 // 10 minutes for large code generation (increased for slower PCs)
     });
   }
 

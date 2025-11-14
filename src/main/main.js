@@ -48,7 +48,15 @@ app.whenReady().then(async () => {
   // Initialize PolyCouncil orchestrator with settings
   orchestrator = new PolyCouncilOrchestrator(settings.lmstudioUrl);
   try {
-    await orchestrator.initialize();
+    // Pass selected models from settings to orchestrator
+    const selectedModels = settings.selectedModels || [];
+    await orchestrator.initialize(selectedModels);
+    
+    // If models were selected, configure them
+    if (selectedModels.length > 0) {
+      await orchestrator.configureModels({ models: selectedModels });
+    }
+    
     console.log('PolyCouncil orchestrator initialized successfully');
   } catch (error) {
     console.error('Failed to initialize orchestrator:', error);
@@ -68,10 +76,18 @@ app.on('window-all-closed', () => {
 });
 
 // IPC Handlers for AI operations
-ipcMain.handle('generate-code', async (event, { prompt, context, language }) => {
+ipcMain.handle('generate-code', async (event, { prompt, context, language, existingFiles }) => {
   try {
-    // Pass null for language to let models decide
-    const result = await orchestrator.generateCode(prompt, context, null);
+    // Create progress callback to send real-time updates
+    const onProgress = (message) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('deliberation-update', message);
+      }
+    };
+    
+    // Pass null for language to let models decide, and progress callback
+    // Pass existingFiles to track file changes
+    const result = await orchestrator.generateCode(prompt, context, null, onProgress, existingFiles || {});
     return { success: true, data: result };
   } catch (error) {
     return { success: false, error: error.message };
@@ -80,7 +96,14 @@ ipcMain.handle('generate-code', async (event, { prompt, context, language }) => 
 
 ipcMain.handle('edit-code', async (event, { code, instruction, context }) => {
   try {
-    const result = await orchestrator.editCode(code, instruction, context);
+    // Create progress callback to send real-time updates
+    const onProgress = (message) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('deliberation-update', message);
+      }
+    };
+    
+    const result = await orchestrator.editCode(code, instruction, context, onProgress);
     return { success: true, data: result };
   } catch (error) {
     return { success: false, error: error.message };
@@ -134,13 +157,26 @@ ipcMain.handle('save-settings', async (event, newSettings) => {
         if (!updateResult.success) {
           return { success: false, error: `Settings saved but connection failed: ${updateResult.error}` };
         }
+        // Re-initialize with new URL and selected models
+        const selectedModels = newSettings.selectedModels || settingsManager.getSetting('selectedModels') || [];
+        await orchestrator.initialize(selectedModels);
+        if (selectedModels.length > 0) {
+          await orchestrator.configureModels({ models: selectedModels });
+        }
+      } else {
+        // Update selected models if changed (URL unchanged)
+        if (newSettings.selectedModels !== undefined) {
+          if (newSettings.selectedModels.length > 0) {
+            await orchestrator.configureModels({ models: newSettings.selectedModels });
+          } else {
+            // Clear models if empty array
+            await orchestrator.configureModels({ models: [] });
+          }
+        }
       }
-      // Update selected models if changed
-      if (newSettings.selectedModels) {
-        await orchestrator.configureModels({ models: newSettings.selectedModels });
-      }
+      return { success: true };
     }
-    return { success: true };
+    return { success: false, error: 'Failed to save settings' };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -166,7 +202,33 @@ ipcMain.handle('new-project', async () => {
 
     if (!result.canceled && result.filePaths.length > 0) {
       projectPath = result.filePaths[0];
-      return { success: true, path: projectPath };
+      // Load any existing files from the project folder
+      const files = {};
+      if (fs.existsSync(projectPath)) {
+        const loadFiles = (dir, basePath = '') => {
+          try {
+            const entries = fs.readdirSync(dir, { withFileTypes: true });
+            entries.forEach(entry => {
+              const fullPath = path.join(dir, entry.name);
+              const relativePath = basePath ? `${basePath}/${entry.name}` : entry.name;
+              if (entry.isDirectory()) {
+                loadFiles(fullPath, relativePath);
+              } else if (entry.isFile()) {
+                try {
+                  const content = fs.readFileSync(fullPath, 'utf8');
+                  files[relativePath] = content;
+                } catch (err) {
+                  console.error(`Failed to read file ${fullPath}:`, err);
+                }
+              }
+            });
+          } catch (err) {
+            console.error(`Failed to read directory ${dir}:`, err);
+          }
+        };
+        loadFiles(projectPath);
+      }
+      return { success: true, path: projectPath, files };
     }
     return { success: false, cancelled: true };
   } catch (error) {

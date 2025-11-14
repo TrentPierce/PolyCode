@@ -130,6 +130,41 @@
   min-height: 0; /* Allow flexbox to shrink */
 }
 
+.editor-tabs-container {
+  background: #2d2d30;
+  border-bottom: 1px solid #3e3e42;
+  flex-shrink: 0;
+}
+
+.editor-tab-bar {
+  display: flex;
+  align-items: center;
+  background: #2d2d30;
+  border-bottom: 1px solid #3e3e42;
+}
+
+.editor-tab-button {
+  padding: 0.5rem 1rem;
+  background: #2d2d30;
+  border: none;
+  border-right: 1px solid #3e3e42;
+  color: #858585;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.editor-tab-button:hover {
+  background: #37373d;
+  color: #d4d4d4;
+}
+
+.editor-tab-button.active {
+  background: #1e1e1e;
+  color: #4ec9b0;
+  border-bottom: 2px solid #4ec9b0;
+}
+
 .editor-tabs {
   display: flex;
   align-items: center;
@@ -197,6 +232,51 @@
   width: 100%;
   min-height: 0; /* Allow flexbox to shrink */
   overflow: hidden;
+}
+
+/* Change tracking styles for Monaco Editor */
+.line-added {
+  background-color: rgba(0, 255, 0, 0.1) !important;
+}
+
+.line-added-margin {
+  background-color: rgba(0, 255, 0, 0.2) !important;
+}
+
+.line-added-glyph::before {
+  content: '+';
+  color: #4ec9b0;
+  font-weight: bold;
+}
+
+.line-deleted {
+  background-color: rgba(255, 0, 0, 0.1) !important;
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.line-deleted-margin {
+  background-color: rgba(255, 0, 0, 0.2) !important;
+}
+
+.line-deleted-glyph::before {
+  content: '-';
+  color: #ff6b6b;
+  font-weight: bold;
+}
+
+.line-modified {
+  background-color: rgba(255, 255, 0, 0.1) !important;
+}
+
+.line-modified-margin {
+  background-color: rgba(255, 255, 0, 0.2) !important;
+}
+
+.line-modified-glyph::before {
+  content: '~';
+  color: #dcdcaa;
+  font-weight: bold;
 }
 
 /* AI Panel Styles */
@@ -595,5 +675,15 @@
   font-size: 0.9rem;
   color: #d4d4d4;
   user-select: none;
+}
+
+/* Spinner Animation */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.spinner {
+  display: inline-block;
 }
 

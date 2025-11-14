@@ -4,13 +4,8 @@ function StatusBar({ language, isConnected, activeFile, onSettingsClick }) {
   return (
     <div className="status-bar">
       <div className="status-item">
-        {isConnected ? '✓ LMStudio' : '✗ LMStudio'}
+        {isConnected ? '✓ LMStudio Connected' : '✗ LMStudio Disconnected'}
       </div>
-      {language && (
-        <div className="status-item">
-          {language}
-        </div>
-      )}
       {activeFile && (
         <div className="status-item">
           {activeFile}

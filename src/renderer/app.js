@@ -634,8 +634,9 @@ ___CSS_LOADER_EXPORT___.push([module.id, `/* Main App Styles */
 .main-content {
   margin-left: 250px;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   height: calc(100vh - 25px);
+  overflow: hidden;
 }
 
 .editor-container {
@@ -643,6 +644,7 @@ ___CSS_LOADER_EXPORT___.push([module.id, `/* Main App Styles */
   display: flex;
   flex-direction: column;
   background: #1e1e1e;
+  min-width: 0; /* Allow flexbox to shrink */
 }
 
 .welcome-screen {
@@ -736,13 +738,52 @@ ___CSS_LOADER_EXPORT___.push([module.id, `/* Main App Styles */
   flex: 1;
   display: flex;
   flex-direction: column;
+  height: 100%;
+  min-height: 0; /* Allow flexbox to shrink */
+}
+
+.editor-tabs-container {
+  background: #2d2d30;
+  border-bottom: 1px solid #3e3e42;
+  flex-shrink: 0;
+}
+
+.editor-tab-bar {
+  display: flex;
+  align-items: center;
+  background: #2d2d30;
+  border-bottom: 1px solid #3e3e42;
+}
+
+.editor-tab-button {
+  padding: 0.5rem 1rem;
+  background: #2d2d30;
+  border: none;
+  border-right: 1px solid #3e3e42;
+  color: #858585;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.editor-tab-button:hover {
+  background: #37373d;
+  color: #d4d4d4;
+}
+
+.editor-tab-button.active {
+  background: #1e1e1e;
+  color: #4ec9b0;
+  border-bottom: 2px solid #4ec9b0;
 }
 
 .editor-tabs {
   display: flex;
+  align-items: center;
   background: #2d2d30;
   border-bottom: 1px solid #3e3e42;
   overflow-x: auto;
+  flex-shrink: 0; /* Don't shrink tabs */
 }
 
 .editor-tab {
@@ -801,16 +842,66 @@ ___CSS_LOADER_EXPORT___.push([module.id, `/* Main App Styles */
 .monaco-editor-container {
   flex: 1;
   width: 100%;
+  min-height: 0; /* Allow flexbox to shrink */
+  overflow: hidden;
+}
+
+/* Change tracking styles for Monaco Editor */
+.line-added {
+  background-color: rgba(0, 255, 0, 0.1) !important;
+}
+
+.line-added-margin {
+  background-color: rgba(0, 255, 0, 0.2) !important;
+}
+
+.line-added-glyph::before {
+  content: '+';
+  color: #4ec9b0;
+  font-weight: bold;
+}
+
+.line-deleted {
+  background-color: rgba(255, 0, 0, 0.1) !important;
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.line-deleted-margin {
+  background-color: rgba(255, 0, 0, 0.2) !important;
+}
+
+.line-deleted-glyph::before {
+  content: '-';
+  color: #ff6b6b;
+  font-weight: bold;
+}
+
+.line-modified {
+  background-color: rgba(255, 255, 0, 0.1) !important;
+}
+
+.line-modified-margin {
+  background-color: rgba(255, 255, 0, 0.2) !important;
+}
+
+.line-modified-glyph::before {
+  content: '~';
+  color: #dcdcaa;
+  font-weight: bold;
 }
 
 /* AI Panel Styles */
 .ai-panel {
-  width: 350px;
+  width: 400px;
+  min-width: 300px;
+  max-width: 500px;
   background: #252526;
   border-left: 1px solid #3e3e42;
   display: flex;
   flex-direction: column;
   height: 100%;
+  overflow: hidden;
 }
 
 .ai-panel-header {
@@ -1198,7 +1289,17 @@ ___CSS_LOADER_EXPORT___.push([module.id, `/* Main App Styles */
   user-select: none;
 }
 
-`, "",{"version":3,"sources":["webpack://./src/renderer/styles/main.css"],"names":[],"mappings":"AAAA,oBAAoB;AACpB;EACE,aAAa;EACb,sBAAsB;EACtB,aAAa;EACb,mBAAmB;EACnB,cAAc;AAChB;;AAEA;EACE,eAAe;EACf,OAAO;EACP,MAAM;EACN,YAAY;EACZ,0BAA0B;EAC1B,mBAAmB;EACnB,+BAA+B;EAC/B,gBAAgB;EAChB,WAAW;AACb;;AAEA;EACE,kBAAkB;EAClB,aAAa;EACb,sBAAsB;EACtB,0BAA0B;AAC5B;;AAEA;EACE,OAAO;EACP,aAAa;EACb,sBAAsB;EACtB,mBAAmB;AACrB;;AAEA;EACE,aAAa;EACb,sBAAsB;EACtB,mBAAmB;EACnB,uBAAuB;EACvB,YAAY;EACZ,kBAAkB;EAClB,aAAa;AACf;;AAEA;EACE,eAAe;EACf,mBAAmB;EACnB,cAAc;AAChB;;AAEA;EACE,iBAAiB;EACjB,gBAAgB;EAChB,cAAc;AAChB;;AAEA;EACE,eAAe;EACf,oBAAoB;EACpB,kBAAkB;EAClB,mBAAmB;EACnB,gBAAgB;AAClB;;AAEA;EACE,iBAAiB;EACjB,cAAc;EACd,gBAAgB;AAClB;;AAEA,yBAAyB;AACzB;EACE,eAAe;AACjB;;AAEA;EACE,aAAa;EACb,mBAAmB;EACnB,8BAA8B;EAC9B,eAAe;EACf,gCAAgC;EAChC,qBAAqB;AACvB;;AAEA;EACE,iBAAiB;EACjB,gBAAgB;EAChB,cAAc;AAChB;;AAEA;EACE,gBAAgB;EAChB,UAAU;EACV,SAAS;AACX;;AAEA;EACE,uBAAuB;EACvB,eAAe;EACf,aAAa;EACb,mBAAmB;EACnB,iBAAiB;EACjB,kBAAkB;EAClB,gBAAgB;AAClB;;AAEA;EACE,mBAAmB;AACrB;;AAEA;EACE,mBAAmB;AACrB;;AAEA;EACE,oBAAoB;EACpB,WAAW;EACX,kBAAkB;AACpB;;AAEA,kBAAkB;AAClB;EACE,OAAO;EACP,aAAa;EACb,sBAAsB;AACxB;;AAEA;EACE,aAAa;EACb,mBAAmB;EACnB,gCAAgC;EAChC,gBAAgB;AAClB;;AAEA;EACE,oBAAoB;EACpB,mBAAmB;EACnB,+BAA+B;EAC/B,eAAe;EACf,aAAa;EACb,mBAAmB;EACnB,iBAAiB;EACjB,mBAAmB;AACrB;;AAEA;EACE,mBAAmB;AACrB;;AAEA;EACE,mBAAmB;EACnB,gCAAgC;AAClC;;AAEA;EACE,mBAAmB;EACnB,kBAAkB;EAClB,eAAe;EACf,YAAY;AACd;;AAEA;EACE,UAAU;AACZ;;AAEA;EACE,iBAAiB;EACjB,oBAAoB;EACpB,mBAAmB;EACnB,YAAY;EACZ,kBAAkB;EAClB,cAAc;EACd,kBAAkB;EAClB,gBAAgB;EAChB,eAAe;EACf,2BAA2B;EAC3B,oBAAoB;AACtB;;AAEA;EACE,mBAAmB;AACrB;;AAEA;EACE,mBAAmB;AACrB;;AAEA;EACE,OAAO;EACP,WAAW;AACb;;AAEA,oBAAoB;AACpB;EACE,YAAY;EACZ,mBAAmB;EACnB,8BAA8B;EAC9B,aAAa;EACb,sBAAsB;EACtB,YAAY;AACd;;AAEA;EACE,aAAa;EACb,gCAAgC;EAChC,mBAAmB;AACrB;;AAEA;EACE,eAAe;EACf,qBAAqB;EACrB,cAAc;AAChB;;AAEA;EACE,OAAO;EACP,gBAAgB;EAChB,aAAa;AACf;;AAEA;EACE,mBAAmB;AACrB;;AAEA;EACE,cAAc;EACd,kBAAkB;EAClB,sBAAsB;EACtB,cAAc;AAChB;;AAEA;EACE,WAAW;EACX,gBAAgB;EAChB,eAAe;EACf,mBAAmB;EACnB,yBAAyB;EACzB,kBAAkB;EAClB,cAAc;EACd,oBAAoB;EACpB,iBAAiB;EACjB,gBAAgB;AAClB;;AAEA;EACE,WAAW;EACX,eAAe;EACf,mBAAmB;EACnB,yBAAyB;EACzB,kBAAkB;EAClB,cAAc;EACd,oBAAoB;EACpB,iBAAiB;AACnB;;AAEA;EACE,WAAW;EACX,gBAAgB;EAChB,mBAAmB;EACnB,YAAY;EACZ,kBAAkB;EAClB,YAAY;EACZ,iBAAiB;EACjB,eAAe;EACf,qBAAqB;EACrB,2BAA2B;AAC7B;;AAEA;EACE,mBAAmB;AACrB;;AAEA;EACE,mBAAmB;EACnB,mBAAmB;EACnB,YAAY;AACd;;AAEA;EACE,mBAAmB;AACrB;;AAEA;EACE,mBAAmB;AACrB;;AAEA;EACE,gBAAgB;EAChB,aAAa;EACb,mBAAmB;EACnB,kBAAkB;EAClB,yBAAyB;AAC3B;;AAEA;EACE,aAAa;EACb,8BAA8B;EAC9B,mBAAmB;EACnB,qBAAqB;EACrB,kBAAkB;EAClB,cAAc;AAChB;;AAEA;EACE,mBAAmB;EACnB,gBAAgB;EAChB,kBAAkB;EAClB,qCAAqC;EACrC,kBAAkB;EAClB,gBAAgB;EAChB,qBAAqB;EACrB,qBAAqB;AACvB;;AAEA;EACE,kBAAkB;EAClB,aAAa;EACb,cAAc;AAChB;;AAEA;EACE,aAAa;EACb,mBAAmB;EACnB,yBAAyB;EACzB,kBAAkB;EAClB,cAAc;EACd,gBAAgB;AAClB;;AAEA,sBAAsB;AACtB;EACE,YAAY;EACZ,mBAAmB;EACnB,aAAa;EACb,mBAAmB;EACnB,iBAAiB;EACjB,kBAAkB;EAClB,YAAY;EACZ,6BAA6B;AAC/B;;AAEA;EACE,kBAAkB;EAClB,aAAa;EACb,mBAAmB;AACrB;;AAEA;EACE,YAAY;EACZ,oBAAoB;AACtB;;AAEA,qBAAqB;AACrB;EACE,WAAW;EACX,YAAY;AACd;;AAEA;EACE,mBAAmB;AACrB;;AAEA;EACE,mBAAmB;EACnB,kBAAkB;AACpB;;AAEA;EACE,mBAAmB;AACrB;;AAEA,0BAA0B;AAC1B;EACE,eAAe;EACf,MAAM;EACN,OAAO;EACP,QAAQ;EACR,SAAS;EACT,8BAA8B;EAC9B,aAAa;EACb,mBAAmB;EACnB,uBAAuB;EACvB,aAAa;AACf;;AAEA;EACE,mBAAmB;EACnB,yBAAyB;EACzB,kBAAkB;EAClB,UAAU;EACV,gBAAgB;EAChB,gBAAgB;EAChB,aAAa;EACb,sBAAsB;EACtB,yCAAyC;AAC3C;;AAEA;EACE,aAAa;EACb,8BAA8B;EAC9B,mBAAmB;EACnB,eAAe;EACf,gCAAgC;EAChC,mBAAmB;AACrB;;AAEA;EACE,SAAS;EACT,iBAAiB;EACjB,cAAc;AAChB;;AAEA;EACE,gBAAgB;EAChB,YAAY;EACZ,cAAc;EACd,eAAe;EACf,eAAe;EACf,UAAU;EACV,WAAW;EACX,YAAY;EACZ,aAAa;EACb,mBAAmB;EACnB,uBAAuB;EACvB,kBAAkB;EAClB,2BAA2B;AAC7B;;AAEA;EACE,mBAAmB;AACrB;;AAEA;EACE,eAAe;EACf,gBAAgB;EAChB,OAAO;AACT;;AAEA;EACE,mBAAmB;AACrB;;AAEA;EACE,iBAAiB;EACjB,cAAc;EACd,mBAAmB;EACnB,sBAAsB;EACtB,gCAAgC;AAClC;;AAEA;EACE,qBAAqB;AACvB;;AAEA;EACE,cAAc;EACd,iBAAiB;EACjB,cAAc;EACd,qBAAqB;EACrB,gBAAgB;AAClB;;AAEA;EACE,WAAW;EACX,gBAAgB;EAChB,mBAAmB;EACnB,yBAAyB;EACzB,kBAAkB;EAClB,cAAc;EACd,oBAAoB;EACpB,iBAAiB;EACjB,6BAA6B;AAC/B;;AAEA;EACE,aAAa;EACb,qBAAqB;AACvB;;AAEA;EACE,YAAY;EACZ,mBAAmB;AACrB;;AAEA;EACE,kBAAkB;EAClB,cAAc;EACd,kBAAkB;EAClB,gBAAgB;AAClB;;AAEA;EACE,aAAa;EACb,YAAY;EACZ,kBAAkB;AACpB;;AAEA;EACE,OAAO;EACP,uBAAuB;EACvB,YAAY;EACZ,kBAAkB;EAClB,iBAAiB;EACjB,gBAAgB;EAChB,eAAe;EACf,oBAAoB;AACtB;;AAEA;EACE,mBAAmB;EACnB,YAAY;AACd;;AAEA;EACE,mBAAmB;AACrB;;AAEA;EACE,mBAAmB;EACnB,YAAY;AACd;;AAEA;EACE,mBAAmB;AACrB;;AAEA;EACE,YAAY;EACZ,mBAAmB;AACrB;;AAEA;EACE,gBAAgB;EAChB,gBAAgB;EAChB,kBAAkB;EAClB,kBAAkB;AACpB;;AAEA;EACE,mBAAmB;EACnB,yBAAyB;EACzB,cAAc;AAChB;;AAEA;EACE,mBAAmB;EACnB,yBAAyB;EACzB,cAAc;AAChB;;AAEA;EACE,kBAAkB;EAClB,iBAAiB;EACjB,gBAAgB;EAChB,yBAAyB;EACzB,kBAAkB;EAClB,eAAe;EACf,mBAAmB;AACrB;;AAEA;EACE,aAAa;EACb,mBAAmB;EACnB,eAAe;EACf,eAAe;EACf,kBAAkB;EAClB,sBAAsB;EACtB,2BAA2B;AAC7B;;AAEA;EACE,mBAAmB;AACrB;;AAEA;EACE,qBAAqB;EACrB,WAAW;EACX,YAAY;EACZ,eAAe;AACjB;;AAEA;EACE,iBAAiB;EACjB,cAAc;EACd,iBAAiB;AACnB","sourcesContent":["/* Main App Styles */\r\n.app-container {\r\n  display: flex;\r\n  flex-direction: column;\r\n  height: 100vh;\r\n  background: #1e1e1e;\r\n  color: #d4d4d4;\r\n}\r\n\r\n.sidebar {\r\n  position: fixed;\r\n  left: 0;\r\n  top: 0;\r\n  width: 250px;\r\n  height: calc(100vh - 25px);\r\n  background: #252526;\r\n  border-right: 1px solid #3e3e42;\r\n  overflow-y: auto;\r\n  z-index: 10;\r\n}\r\n\r\n.main-content {\r\n  margin-left: 250px;\r\n  display: flex;\r\n  flex-direction: column;\r\n  height: calc(100vh - 25px);\r\n}\r\n\r\n.editor-container {\r\n  flex: 1;\r\n  display: flex;\r\n  flex-direction: column;\r\n  background: #1e1e1e;\r\n}\r\n\r\n.welcome-screen {\r\n  display: flex;\r\n  flex-direction: column;\r\n  align-items: center;\r\n  justify-content: center;\r\n  height: 100%;\r\n  text-align: center;\r\n  padding: 2rem;\r\n}\r\n\r\n.welcome-screen h1 {\r\n  font-size: 3rem;\r\n  margin-bottom: 1rem;\r\n  color: #4ec9b0;\r\n}\r\n\r\n.welcome-screen p {\r\n  font-size: 1.2rem;\r\n  margin: 0.5rem 0;\r\n  color: #858585;\r\n}\r\n\r\n.welcome-screen .status {\r\n  font-size: 1rem;\r\n  padding: 0.5rem 1rem;\r\n  border-radius: 4px;\r\n  background: #2d2d30;\r\n  margin-top: 1rem;\r\n}\r\n\r\n.welcome-screen .hint {\r\n  font-size: 0.9rem;\r\n  color: #858585;\r\n  margin-top: 2rem;\r\n}\r\n\r\n/* File Explorer Styles */\r\n.file-explorer {\r\n  padding: 0.5rem;\r\n}\r\n\r\n.file-explorer-header {\r\n  display: flex;\r\n  align-items: center;\r\n  justify-content: space-between;\r\n  padding: 0.5rem;\r\n  border-bottom: 1px solid #3e3e42;\r\n  margin-bottom: 0.5rem;\r\n}\r\n\r\n.file-explorer-header h3 {\r\n  font-size: 0.9rem;\r\n  font-weight: 600;\r\n  color: #cccccc;\r\n}\r\n\r\n.file-tree {\r\n  list-style: none;\r\n  padding: 0;\r\n  margin: 0;\r\n}\r\n\r\n.file-item {\r\n  padding: 0.25rem 0.5rem;\r\n  cursor: pointer;\r\n  display: flex;\r\n  align-items: center;\r\n  font-size: 0.9rem;\r\n  border-radius: 3px;\r\n  margin: 0.1rem 0;\r\n}\r\n\r\n.file-item:hover {\r\n  background: #2a2d2e;\r\n}\r\n\r\n.file-item.active {\r\n  background: #094771;\r\n}\r\n\r\n.file-icon {\r\n  margin-right: 0.5rem;\r\n  width: 16px;\r\n  text-align: center;\r\n}\r\n\r\n/* Editor Styles */\r\n.editor-wrapper {\r\n  flex: 1;\r\n  display: flex;\r\n  flex-direction: column;\r\n}\r\n\r\n.editor-tabs {\r\n  display: flex;\r\n  background: #2d2d30;\r\n  border-bottom: 1px solid #3e3e42;\r\n  overflow-x: auto;\r\n}\r\n\r\n.editor-tab {\r\n  padding: 0.5rem 1rem;\r\n  background: #2d2d30;\r\n  border-right: 1px solid #3e3e42;\r\n  cursor: pointer;\r\n  display: flex;\r\n  align-items: center;\r\n  font-size: 0.9rem;\r\n  white-space: nowrap;\r\n}\r\n\r\n.editor-tab:hover {\r\n  background: #37373d;\r\n}\r\n\r\n.editor-tab.active {\r\n  background: #1e1e1e;\r\n  border-bottom: 2px solid #007acc;\r\n}\r\n\r\n.editor-tab-close {\r\n  margin-left: 0.5rem;\r\n  padding: 0 0.25rem;\r\n  cursor: pointer;\r\n  opacity: 0.7;\r\n}\r\n\r\n.editor-tab-close:hover {\r\n  opacity: 1;\r\n}\r\n\r\n.run-button {\r\n  margin-left: auto;\r\n  padding: 0.5rem 1rem;\r\n  background: #4ec9b0;\r\n  border: none;\r\n  border-radius: 4px;\r\n  color: #1e1e1e;\r\n  font-size: 0.85rem;\r\n  font-weight: 600;\r\n  cursor: pointer;\r\n  transition: background 0.2s;\r\n  margin-right: 0.5rem;\r\n}\r\n\r\n.run-button:hover {\r\n  background: #5ddcc0;\r\n}\r\n\r\n.run-button:active {\r\n  background: #3db89a;\r\n}\r\n\r\n.monaco-editor-container {\r\n  flex: 1;\r\n  width: 100%;\r\n}\r\n\r\n/* AI Panel Styles */\r\n.ai-panel {\r\n  width: 350px;\r\n  background: #252526;\r\n  border-left: 1px solid #3e3e42;\r\n  display: flex;\r\n  flex-direction: column;\r\n  height: 100%;\r\n}\r\n\r\n.ai-panel-header {\r\n  padding: 1rem;\r\n  border-bottom: 1px solid #3e3e42;\r\n  background: #2d2d30;\r\n}\r\n\r\n.ai-panel-header h3 {\r\n  font-size: 1rem;\r\n  margin-bottom: 0.5rem;\r\n  color: #4ec9b0;\r\n}\r\n\r\n.ai-panel-content {\r\n  flex: 1;\r\n  overflow-y: auto;\r\n  padding: 1rem;\r\n}\r\n\r\n.ai-input-group {\r\n  margin-bottom: 1rem;\r\n}\r\n\r\n.ai-input-group label {\r\n  display: block;\r\n  font-size: 0.85rem;\r\n  margin-bottom: 0.25rem;\r\n  color: #858585;\r\n}\r\n\r\n.ai-input-group textarea {\r\n  width: 100%;\r\n  min-height: 80px;\r\n  padding: 0.5rem;\r\n  background: #1e1e1e;\r\n  border: 1px solid #3e3e42;\r\n  border-radius: 4px;\r\n  color: #d4d4d4;\r\n  font-family: inherit;\r\n  font-size: 0.9rem;\r\n  resize: vertical;\r\n}\r\n\r\n.ai-input-group select {\r\n  width: 100%;\r\n  padding: 0.5rem;\r\n  background: #1e1e1e;\r\n  border: 1px solid #3e3e42;\r\n  border-radius: 4px;\r\n  color: #d4d4d4;\r\n  font-family: inherit;\r\n  font-size: 0.9rem;\r\n}\r\n\r\n.ai-button {\r\n  width: 100%;\r\n  padding: 0.75rem;\r\n  background: #0e639c;\r\n  border: none;\r\n  border-radius: 4px;\r\n  color: white;\r\n  font-size: 0.9rem;\r\n  cursor: pointer;\r\n  margin-bottom: 0.5rem;\r\n  transition: background 0.2s;\r\n}\r\n\r\n.ai-button:hover:not(:disabled) {\r\n  background: #1177bb;\r\n}\r\n\r\n.ai-button:disabled {\r\n  background: #3e3e42;\r\n  cursor: not-allowed;\r\n  opacity: 0.6;\r\n}\r\n\r\n.ai-button.secondary {\r\n  background: #3e3e42;\r\n}\r\n\r\n.ai-button.secondary:hover:not(:disabled) {\r\n  background: #4a4a4a;\r\n}\r\n\r\n.ai-result {\r\n  margin-top: 1rem;\r\n  padding: 1rem;\r\n  background: #1e1e1e;\r\n  border-radius: 4px;\r\n  border: 1px solid #3e3e42;\r\n}\r\n\r\n.ai-result-header {\r\n  display: flex;\r\n  justify-content: space-between;\r\n  align-items: center;\r\n  margin-bottom: 0.5rem;\r\n  font-size: 0.85rem;\r\n  color: #858585;\r\n}\r\n\r\n.ai-result-code {\r\n  background: #252526;\r\n  padding: 0.75rem;\r\n  border-radius: 4px;\r\n  font-family: 'Courier New', monospace;\r\n  font-size: 0.85rem;\r\n  overflow-x: auto;\r\n  white-space: pre-wrap;\r\n  word-wrap: break-word;\r\n}\r\n\r\n.ai-loading {\r\n  text-align: center;\r\n  padding: 1rem;\r\n  color: #858585;\r\n}\r\n\r\n.ai-error {\r\n  padding: 1rem;\r\n  background: #5a1d1d;\r\n  border: 1px solid #8b2d2d;\r\n  border-radius: 4px;\r\n  color: #ff6b6b;\r\n  margin-top: 1rem;\r\n}\r\n\r\n/* Status Bar Styles */\r\n.status-bar {\r\n  height: 25px;\r\n  background: #007acc;\r\n  display: flex;\r\n  align-items: center;\r\n  padding: 0 0.5rem;\r\n  font-size: 0.75rem;\r\n  color: white;\r\n  border-top: 1px solid #005a9e;\r\n}\r\n\r\n.status-item {\r\n  margin-right: 1rem;\r\n  display: flex;\r\n  align-items: center;\r\n}\r\n\r\n.status-item::before {\r\n  content: '•';\r\n  margin-right: 0.5rem;\r\n}\r\n\r\n/* Scrollbar Styles */\r\n::-webkit-scrollbar {\r\n  width: 10px;\r\n  height: 10px;\r\n}\r\n\r\n::-webkit-scrollbar-track {\r\n  background: #1e1e1e;\r\n}\r\n\r\n::-webkit-scrollbar-thumb {\r\n  background: #424242;\r\n  border-radius: 5px;\r\n}\r\n\r\n::-webkit-scrollbar-thumb:hover {\r\n  background: #4e4e4e;\r\n}\r\n\r\n/* Settings Modal Styles */\r\n.settings-overlay {\r\n  position: fixed;\r\n  top: 0;\r\n  left: 0;\r\n  right: 0;\r\n  bottom: 0;\r\n  background: rgba(0, 0, 0, 0.7);\r\n  display: flex;\r\n  align-items: center;\r\n  justify-content: center;\r\n  z-index: 1000;\r\n}\r\n\r\n.settings-modal {\r\n  background: #252526;\r\n  border: 1px solid #3e3e42;\r\n  border-radius: 8px;\r\n  width: 90%;\r\n  max-width: 600px;\r\n  max-height: 80vh;\r\n  display: flex;\r\n  flex-direction: column;\r\n  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);\r\n}\r\n\r\n.settings-header {\r\n  display: flex;\r\n  justify-content: space-between;\r\n  align-items: center;\r\n  padding: 1.5rem;\r\n  border-bottom: 1px solid #3e3e42;\r\n  background: #2d2d30;\r\n}\r\n\r\n.settings-header h2 {\r\n  margin: 0;\r\n  font-size: 1.5rem;\r\n  color: #d4d4d4;\r\n}\r\n\r\n.settings-close {\r\n  background: none;\r\n  border: none;\r\n  color: #d4d4d4;\r\n  font-size: 2rem;\r\n  cursor: pointer;\r\n  padding: 0;\r\n  width: 32px;\r\n  height: 32px;\r\n  display: flex;\r\n  align-items: center;\r\n  justify-content: center;\r\n  border-radius: 4px;\r\n  transition: background 0.2s;\r\n}\r\n\r\n.settings-close:hover {\r\n  background: #3e3e42;\r\n}\r\n\r\n.settings-content {\r\n  padding: 1.5rem;\r\n  overflow-y: auto;\r\n  flex: 1;\r\n}\r\n\r\n.settings-section {\r\n  margin-bottom: 2rem;\r\n}\r\n\r\n.settings-section h3 {\r\n  font-size: 1.1rem;\r\n  color: #4ec9b0;\r\n  margin-bottom: 1rem;\r\n  padding-bottom: 0.5rem;\r\n  border-bottom: 1px solid #3e3e42;\r\n}\r\n\r\n.settings-field {\r\n  margin-bottom: 1.5rem;\r\n}\r\n\r\n.settings-field label {\r\n  display: block;\r\n  font-size: 0.9rem;\r\n  color: #cccccc;\r\n  margin-bottom: 0.5rem;\r\n  font-weight: 500;\r\n}\r\n\r\n.settings-field input {\r\n  width: 100%;\r\n  padding: 0.75rem;\r\n  background: #1e1e1e;\r\n  border: 1px solid #3e3e42;\r\n  border-radius: 4px;\r\n  color: #d4d4d4;\r\n  font-family: inherit;\r\n  font-size: 0.9rem;\r\n  transition: border-color 0.2s;\r\n}\r\n\r\n.settings-field input:focus {\r\n  outline: none;\r\n  border-color: #007acc;\r\n}\r\n\r\n.settings-field input:disabled {\r\n  opacity: 0.6;\r\n  cursor: not-allowed;\r\n}\r\n\r\n.settings-hint {\r\n  font-size: 0.75rem;\r\n  color: #858585;\r\n  margin-top: 0.5rem;\r\n  line-height: 1.4;\r\n}\r\n\r\n.settings-actions {\r\n  display: flex;\r\n  gap: 0.75rem;\r\n  margin-top: 1.5rem;\r\n}\r\n\r\n.settings-button {\r\n  flex: 1;\r\n  padding: 0.75rem 1.5rem;\r\n  border: none;\r\n  border-radius: 4px;\r\n  font-size: 0.9rem;\r\n  font-weight: 500;\r\n  cursor: pointer;\r\n  transition: all 0.2s;\r\n}\r\n\r\n.settings-button.primary {\r\n  background: #0e639c;\r\n  color: white;\r\n}\r\n\r\n.settings-button.primary:hover:not(:disabled) {\r\n  background: #1177bb;\r\n}\r\n\r\n.settings-button.secondary {\r\n  background: #3e3e42;\r\n  color: white;\r\n}\r\n\r\n.settings-button.secondary:hover:not(:disabled) {\r\n  background: #4a4a4a;\r\n}\r\n\r\n.settings-button:disabled {\r\n  opacity: 0.6;\r\n  cursor: not-allowed;\r\n}\r\n\r\n.settings-message {\r\n  margin-top: 1rem;\r\n  padding: 0.75rem;\r\n  border-radius: 4px;\r\n  font-size: 0.85rem;\r\n}\r\n\r\n.settings-message.success {\r\n  background: #1e3a1e;\r\n  border: 1px solid #4ec9b0;\r\n  color: #4ec9b0;\r\n}\r\n\r\n.settings-message.error {\r\n  background: #3a1e1e;\r\n  border: 1px solid #ff6b6b;\r\n  color: #ff6b6b;\r\n}\r\n\r\n.model-list {\r\n  margin-top: 0.5rem;\r\n  max-height: 300px;\r\n  overflow-y: auto;\r\n  border: 1px solid #3e3e42;\r\n  border-radius: 4px;\r\n  padding: 0.5rem;\r\n  background: #1e1e1e;\r\n}\r\n\r\n.model-checkbox {\r\n  display: flex;\r\n  align-items: center;\r\n  padding: 0.5rem;\r\n  cursor: pointer;\r\n  border-radius: 3px;\r\n  margin-bottom: 0.25rem;\r\n  transition: background 0.2s;\r\n}\r\n\r\n.model-checkbox:hover {\r\n  background: #2a2d2e;\r\n}\r\n\r\n.model-checkbox input[type=\"checkbox\"] {\r\n  margin-right: 0.75rem;\r\n  width: 18px;\r\n  height: 18px;\r\n  cursor: pointer;\r\n}\r\n\r\n.model-checkbox span {\r\n  font-size: 0.9rem;\r\n  color: #d4d4d4;\r\n  user-select: none;\r\n}\r\n\r\n"],"sourceRoot":""}]);
+/* Spinner Animation */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.spinner {
+  display: inline-block;
+}
+
+`, "",{"version":3,"sources":["webpack://./src/renderer/styles/main.css"],"names":[],"mappings":"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","sourcesContent":["/* Main App Styles */\r\n.app-container {\r\n  display: flex;\r\n  flex-direction: column;\r\n  height: 100vh;\r\n  background: #1e1e1e;\r\n  color: #d4d4d4;\r\n}\r\n\r\n.sidebar {\r\n  position: fixed;\r\n  left: 0;\r\n  top: 0;\r\n  width: 250px;\r\n  height: calc(100vh - 25px);\r\n  background: #252526;\r\n  border-right: 1px solid #3e3e42;\r\n  overflow-y: auto;\r\n  z-index: 10;\r\n}\r\n\r\n.main-content {\r\n  margin-left: 250px;\r\n  display: flex;\r\n  flex-direction: row;\r\n  height: calc(100vh - 25px);\r\n  overflow: hidden;\r\n}\r\n\r\n.editor-container {\r\n  flex: 1;\r\n  display: flex;\r\n  flex-direction: column;\r\n  background: #1e1e1e;\r\n  min-width: 0; /* Allow flexbox to shrink */\r\n}\r\n\r\n.welcome-screen {\r\n  display: flex;\r\n  flex-direction: column;\r\n  align-items: center;\r\n  justify-content: center;\r\n  height: 100%;\r\n  text-align: center;\r\n  padding: 2rem;\r\n}\r\n\r\n.welcome-screen h1 {\r\n  font-size: 3rem;\r\n  margin-bottom: 1rem;\r\n  color: #4ec9b0;\r\n}\r\n\r\n.welcome-screen p {\r\n  font-size: 1.2rem;\r\n  margin: 0.5rem 0;\r\n  color: #858585;\r\n}\r\n\r\n.welcome-screen .status {\r\n  font-size: 1rem;\r\n  padding: 0.5rem 1rem;\r\n  border-radius: 4px;\r\n  background: #2d2d30;\r\n  margin-top: 1rem;\r\n}\r\n\r\n.welcome-screen .hint {\r\n  font-size: 0.9rem;\r\n  color: #858585;\r\n  margin-top: 2rem;\r\n}\r\n\r\n/* File Explorer Styles */\r\n.file-explorer {\r\n  padding: 0.5rem;\r\n}\r\n\r\n.file-explorer-header {\r\n  display: flex;\r\n  align-items: center;\r\n  justify-content: space-between;\r\n  padding: 0.5rem;\r\n  border-bottom: 1px solid #3e3e42;\r\n  margin-bottom: 0.5rem;\r\n}\r\n\r\n.file-explorer-header h3 {\r\n  font-size: 0.9rem;\r\n  font-weight: 600;\r\n  color: #cccccc;\r\n}\r\n\r\n.file-tree {\r\n  list-style: none;\r\n  padding: 0;\r\n  margin: 0;\r\n}\r\n\r\n.file-item {\r\n  padding: 0.25rem 0.5rem;\r\n  cursor: pointer;\r\n  display: flex;\r\n  align-items: center;\r\n  font-size: 0.9rem;\r\n  border-radius: 3px;\r\n  margin: 0.1rem 0;\r\n}\r\n\r\n.file-item:hover {\r\n  background: #2a2d2e;\r\n}\r\n\r\n.file-item.active {\r\n  background: #094771;\r\n}\r\n\r\n.file-icon {\r\n  margin-right: 0.5rem;\r\n  width: 16px;\r\n  text-align: center;\r\n}\r\n\r\n/* Editor Styles */\r\n.editor-wrapper {\r\n  flex: 1;\r\n  display: flex;\r\n  flex-direction: column;\r\n  height: 100%;\r\n  min-height: 0; /* Allow flexbox to shrink */\r\n}\r\n\r\n.editor-tabs-container {\r\n  background: #2d2d30;\r\n  border-bottom: 1px solid #3e3e42;\r\n  flex-shrink: 0;\r\n}\r\n\r\n.editor-tab-bar {\r\n  display: flex;\r\n  align-items: center;\r\n  background: #2d2d30;\r\n  border-bottom: 1px solid #3e3e42;\r\n}\r\n\r\n.editor-tab-button {\r\n  padding: 0.5rem 1rem;\r\n  background: #2d2d30;\r\n  border: none;\r\n  border-right: 1px solid #3e3e42;\r\n  color: #858585;\r\n  cursor: pointer;\r\n  font-size: 0.9rem;\r\n  transition: all 0.2s;\r\n}\r\n\r\n.editor-tab-button:hover {\r\n  background: #37373d;\r\n  color: #d4d4d4;\r\n}\r\n\r\n.editor-tab-button.active {\r\n  background: #1e1e1e;\r\n  color: #4ec9b0;\r\n  border-bottom: 2px solid #4ec9b0;\r\n}\r\n\r\n.editor-tabs {\r\n  display: flex;\r\n  align-items: center;\r\n  background: #2d2d30;\r\n  border-bottom: 1px solid #3e3e42;\r\n  overflow-x: auto;\r\n  flex-shrink: 0; /* Don't shrink tabs */\r\n}\r\n\r\n.editor-tab {\r\n  padding: 0.5rem 1rem;\r\n  background: #2d2d30;\r\n  border-right: 1px solid #3e3e42;\r\n  cursor: pointer;\r\n  display: flex;\r\n  align-items: center;\r\n  font-size: 0.9rem;\r\n  white-space: nowrap;\r\n}\r\n\r\n.editor-tab:hover {\r\n  background: #37373d;\r\n}\r\n\r\n.editor-tab.active {\r\n  background: #1e1e1e;\r\n  border-bottom: 2px solid #007acc;\r\n}\r\n\r\n.editor-tab-close {\r\n  margin-left: 0.5rem;\r\n  padding: 0 0.25rem;\r\n  cursor: pointer;\r\n  opacity: 0.7;\r\n}\r\n\r\n.editor-tab-close:hover {\r\n  opacity: 1;\r\n}\r\n\r\n.run-button {\r\n  margin-left: auto;\r\n  padding: 0.5rem 1rem;\r\n  background: #4ec9b0;\r\n  border: none;\r\n  border-radius: 4px;\r\n  color: #1e1e1e;\r\n  font-size: 0.85rem;\r\n  font-weight: 600;\r\n  cursor: pointer;\r\n  transition: background 0.2s;\r\n  margin-right: 0.5rem;\r\n}\r\n\r\n.run-button:hover {\r\n  background: #5ddcc0;\r\n}\r\n\r\n.run-button:active {\r\n  background: #3db89a;\r\n}\r\n\r\n.monaco-editor-container {\r\n  flex: 1;\r\n  width: 100%;\r\n  min-height: 0; /* Allow flexbox to shrink */\r\n  overflow: hidden;\r\n}\r\n\r\n/* Change tracking styles for Monaco Editor */\r\n.line-added {\r\n  background-color: rgba(0, 255, 0, 0.1) !important;\r\n}\r\n\r\n.line-added-margin {\r\n  background-color: rgba(0, 255, 0, 0.2) !important;\r\n}\r\n\r\n.line-added-glyph::before {\r\n  content: '+';\r\n  color: #4ec9b0;\r\n  font-weight: bold;\r\n}\r\n\r\n.line-deleted {\r\n  background-color: rgba(255, 0, 0, 0.1) !important;\r\n  text-decoration: line-through;\r\n  opacity: 0.6;\r\n}\r\n\r\n.line-deleted-margin {\r\n  background-color: rgba(255, 0, 0, 0.2) !important;\r\n}\r\n\r\n.line-deleted-glyph::before {\r\n  content: '-';\r\n  color: #ff6b6b;\r\n  font-weight: bold;\r\n}\r\n\r\n.line-modified {\r\n  background-color: rgba(255, 255, 0, 0.1) !important;\r\n}\r\n\r\n.line-modified-margin {\r\n  background-color: rgba(255, 255, 0, 0.2) !important;\r\n}\r\n\r\n.line-modified-glyph::before {\r\n  content: '~';\r\n  color: #dcdcaa;\r\n  font-weight: bold;\r\n}\r\n\r\n/* AI Panel Styles */\r\n.ai-panel {\r\n  width: 400px;\r\n  min-width: 300px;\r\n  max-width: 500px;\r\n  background: #252526;\r\n  border-left: 1px solid #3e3e42;\r\n  display: flex;\r\n  flex-direction: column;\r\n  height: 100%;\r\n  overflow: hidden;\r\n}\r\n\r\n.ai-panel-header {\r\n  padding: 1rem;\r\n  border-bottom: 1px solid #3e3e42;\r\n  background: #2d2d30;\r\n}\r\n\r\n.ai-panel-header h3 {\r\n  font-size: 1rem;\r\n  margin-bottom: 0.5rem;\r\n  color: #4ec9b0;\r\n}\r\n\r\n.ai-panel-content {\r\n  flex: 1;\r\n  overflow-y: auto;\r\n  padding: 1rem;\r\n}\r\n\r\n.ai-input-group {\r\n  margin-bottom: 1rem;\r\n}\r\n\r\n.ai-input-group label {\r\n  display: block;\r\n  font-size: 0.85rem;\r\n  margin-bottom: 0.25rem;\r\n  color: #858585;\r\n}\r\n\r\n.ai-input-group textarea {\r\n  width: 100%;\r\n  min-height: 80px;\r\n  padding: 0.5rem;\r\n  background: #1e1e1e;\r\n  border: 1px solid #3e3e42;\r\n  border-radius: 4px;\r\n  color: #d4d4d4;\r\n  font-family: inherit;\r\n  font-size: 0.9rem;\r\n  resize: vertical;\r\n}\r\n\r\n.ai-input-group select {\r\n  width: 100%;\r\n  padding: 0.5rem;\r\n  background: #1e1e1e;\r\n  border: 1px solid #3e3e42;\r\n  border-radius: 4px;\r\n  color: #d4d4d4;\r\n  font-family: inherit;\r\n  font-size: 0.9rem;\r\n}\r\n\r\n.ai-button {\r\n  width: 100%;\r\n  padding: 0.75rem;\r\n  background: #0e639c;\r\n  border: none;\r\n  border-radius: 4px;\r\n  color: white;\r\n  font-size: 0.9rem;\r\n  cursor: pointer;\r\n  margin-bottom: 0.5rem;\r\n  transition: background 0.2s;\r\n}\r\n\r\n.ai-button:hover:not(:disabled) {\r\n  background: #1177bb;\r\n}\r\n\r\n.ai-button:disabled {\r\n  background: #3e3e42;\r\n  cursor: not-allowed;\r\n  opacity: 0.6;\r\n}\r\n\r\n.ai-button.secondary {\r\n  background: #3e3e42;\r\n}\r\n\r\n.ai-button.secondary:hover:not(:disabled) {\r\n  background: #4a4a4a;\r\n}\r\n\r\n.ai-result {\r\n  margin-top: 1rem;\r\n  padding: 1rem;\r\n  background: #1e1e1e;\r\n  border-radius: 4px;\r\n  border: 1px solid #3e3e42;\r\n}\r\n\r\n.ai-result-header {\r\n  display: flex;\r\n  justify-content: space-between;\r\n  align-items: center;\r\n  margin-bottom: 0.5rem;\r\n  font-size: 0.85rem;\r\n  color: #858585;\r\n}\r\n\r\n.ai-result-code {\r\n  background: #252526;\r\n  padding: 0.75rem;\r\n  border-radius: 4px;\r\n  font-family: 'Courier New', monospace;\r\n  font-size: 0.85rem;\r\n  overflow-x: auto;\r\n  white-space: pre-wrap;\r\n  word-wrap: break-word;\r\n}\r\n\r\n.ai-loading {\r\n  text-align: center;\r\n  padding: 1rem;\r\n  color: #858585;\r\n}\r\n\r\n.ai-error {\r\n  padding: 1rem;\r\n  background: #5a1d1d;\r\n  border: 1px solid #8b2d2d;\r\n  border-radius: 4px;\r\n  color: #ff6b6b;\r\n  margin-top: 1rem;\r\n}\r\n\r\n/* Status Bar Styles */\r\n.status-bar {\r\n  height: 25px;\r\n  background: #007acc;\r\n  display: flex;\r\n  align-items: center;\r\n  padding: 0 0.5rem;\r\n  font-size: 0.75rem;\r\n  color: white;\r\n  border-top: 1px solid #005a9e;\r\n}\r\n\r\n.status-item {\r\n  margin-right: 1rem;\r\n  display: flex;\r\n  align-items: center;\r\n}\r\n\r\n.status-item::before {\r\n  content: '•';\r\n  margin-right: 0.5rem;\r\n}\r\n\r\n/* Scrollbar Styles */\r\n::-webkit-scrollbar {\r\n  width: 10px;\r\n  height: 10px;\r\n}\r\n\r\n::-webkit-scrollbar-track {\r\n  background: #1e1e1e;\r\n}\r\n\r\n::-webkit-scrollbar-thumb {\r\n  background: #424242;\r\n  border-radius: 5px;\r\n}\r\n\r\n::-webkit-scrollbar-thumb:hover {\r\n  background: #4e4e4e;\r\n}\r\n\r\n/* Settings Modal Styles */\r\n.settings-overlay {\r\n  position: fixed;\r\n  top: 0;\r\n  left: 0;\r\n  right: 0;\r\n  bottom: 0;\r\n  background: rgba(0, 0, 0, 0.7);\r\n  display: flex;\r\n  align-items: center;\r\n  justify-content: center;\r\n  z-index: 1000;\r\n}\r\n\r\n.settings-modal {\r\n  background: #252526;\r\n  border: 1px solid #3e3e42;\r\n  border-radius: 8px;\r\n  width: 90%;\r\n  max-width: 600px;\r\n  max-height: 80vh;\r\n  display: flex;\r\n  flex-direction: column;\r\n  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);\r\n}\r\n\r\n.settings-header {\r\n  display: flex;\r\n  justify-content: space-between;\r\n  align-items: center;\r\n  padding: 1.5rem;\r\n  border-bottom: 1px solid #3e3e42;\r\n  background: #2d2d30;\r\n}\r\n\r\n.settings-header h2 {\r\n  margin: 0;\r\n  font-size: 1.5rem;\r\n  color: #d4d4d4;\r\n}\r\n\r\n.settings-close {\r\n  background: none;\r\n  border: none;\r\n  color: #d4d4d4;\r\n  font-size: 2rem;\r\n  cursor: pointer;\r\n  padding: 0;\r\n  width: 32px;\r\n  height: 32px;\r\n  display: flex;\r\n  align-items: center;\r\n  justify-content: center;\r\n  border-radius: 4px;\r\n  transition: background 0.2s;\r\n}\r\n\r\n.settings-close:hover {\r\n  background: #3e3e42;\r\n}\r\n\r\n.settings-content {\r\n  padding: 1.5rem;\r\n  overflow-y: auto;\r\n  flex: 1;\r\n}\r\n\r\n.settings-section {\r\n  margin-bottom: 2rem;\r\n}\r\n\r\n.settings-section h3 {\r\n  font-size: 1.1rem;\r\n  color: #4ec9b0;\r\n  margin-bottom: 1rem;\r\n  padding-bottom: 0.5rem;\r\n  border-bottom: 1px solid #3e3e42;\r\n}\r\n\r\n.settings-field {\r\n  margin-bottom: 1.5rem;\r\n}\r\n\r\n.settings-field label {\r\n  display: block;\r\n  font-size: 0.9rem;\r\n  color: #cccccc;\r\n  margin-bottom: 0.5rem;\r\n  font-weight: 500;\r\n}\r\n\r\n.settings-field input {\r\n  width: 100%;\r\n  padding: 0.75rem;\r\n  background: #1e1e1e;\r\n  border: 1px solid #3e3e42;\r\n  border-radius: 4px;\r\n  color: #d4d4d4;\r\n  font-family: inherit;\r\n  font-size: 0.9rem;\r\n  transition: border-color 0.2s;\r\n}\r\n\r\n.settings-field input:focus {\r\n  outline: none;\r\n  border-color: #007acc;\r\n}\r\n\r\n.settings-field input:disabled {\r\n  opacity: 0.6;\r\n  cursor: not-allowed;\r\n}\r\n\r\n.settings-hint {\r\n  font-size: 0.75rem;\r\n  color: #858585;\r\n  margin-top: 0.5rem;\r\n  line-height: 1.4;\r\n}\r\n\r\n.settings-actions {\r\n  display: flex;\r\n  gap: 0.75rem;\r\n  margin-top: 1.5rem;\r\n}\r\n\r\n.settings-button {\r\n  flex: 1;\r\n  padding: 0.75rem 1.5rem;\r\n  border: none;\r\n  border-radius: 4px;\r\n  font-size: 0.9rem;\r\n  font-weight: 500;\r\n  cursor: pointer;\r\n  transition: all 0.2s;\r\n}\r\n\r\n.settings-button.primary {\r\n  background: #0e639c;\r\n  color: white;\r\n}\r\n\r\n.settings-button.primary:hover:not(:disabled) {\r\n  background: #1177bb;\r\n}\r\n\r\n.settings-button.secondary {\r\n  background: #3e3e42;\r\n  color: white;\r\n}\r\n\r\n.settings-button.secondary:hover:not(:disabled) {\r\n  background: #4a4a4a;\r\n}\r\n\r\n.settings-button:disabled {\r\n  opacity: 0.6;\r\n  cursor: not-allowed;\r\n}\r\n\r\n.settings-message {\r\n  margin-top: 1rem;\r\n  padding: 0.75rem;\r\n  border-radius: 4px;\r\n  font-size: 0.85rem;\r\n}\r\n\r\n.settings-message.success {\r\n  background: #1e3a1e;\r\n  border: 1px solid #4ec9b0;\r\n  color: #4ec9b0;\r\n}\r\n\r\n.settings-message.error {\r\n  background: #3a1e1e;\r\n  border: 1px solid #ff6b6b;\r\n  color: #ff6b6b;\r\n}\r\n\r\n.model-list {\r\n  margin-top: 0.5rem;\r\n  max-height: 300px;\r\n  overflow-y: auto;\r\n  border: 1px solid #3e3e42;\r\n  border-radius: 4px;\r\n  padding: 0.5rem;\r\n  background: #1e1e1e;\r\n}\r\n\r\n.model-checkbox {\r\n  display: flex;\r\n  align-items: center;\r\n  padding: 0.5rem;\r\n  cursor: pointer;\r\n  border-radius: 3px;\r\n  margin-bottom: 0.25rem;\r\n  transition: background 0.2s;\r\n}\r\n\r\n.model-checkbox:hover {\r\n  background: #2a2d2e;\r\n}\r\n\r\n.model-checkbox input[type=\"checkbox\"] {\r\n  margin-right: 0.75rem;\r\n  width: 18px;\r\n  height: 18px;\r\n  cursor: pointer;\r\n}\r\n\r\n.model-checkbox span {\r\n  font-size: 0.9rem;\r\n  color: #d4d4d4;\r\n  user-select: none;\r\n}\r\n\r\n/* Spinner Animation */\r\n@keyframes spin {\r\n  0% { transform: rotate(0deg); }\r\n  100% { transform: rotate(360deg); }\r\n}\r\n\r\n.spinner {\r\n  display: inline-block;\r\n}\r\n\r\n"],"sourceRoot":""}]);
 // Exports
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (___CSS_LOADER_EXPORT___);
 
@@ -36605,7 +36706,9 @@ function AIPanel({
   language,
   models,
   isConnected,
-  onCodeGenerated
+  files = {},
+  onCodeGenerated,
+  onDeliberationUpdate
 }) {
   const [prompt, setPrompt] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('');
   const [instruction, setInstruction] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('');
@@ -36613,43 +36716,183 @@ function AIPanel({
   const [result, setResult] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(null);
   const [error, setError] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(null);
   const [mode, setMode] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('generate'); // 'generate', 'edit', 'analyze'
+  const [deliberationMessages, setDeliberationMessages] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
+  const [currentPhase, setCurrentPhase] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('');
+  const [progressPercent, setProgressPercent] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(0);
+
+  // Note: IPC listener is set up dynamically in handleGenerate to ensure it's active during generation
 
   const handleGenerate = async () => {
     if (!prompt.trim() || !isConnected) return;
+    if (loading) {
+      console.warn('Generation already in progress, ignoring request');
+      return;
+    }
     setLoading(true);
     setError(null);
     setResult(null);
+    setCurrentPhase('Initializing...');
+    setProgressPercent(0);
+    const currentPrompt = prompt; // Save prompt before clearing
+
+    // Clear previous deliberation messages and add initial message
+    const initialMessages = [{
+      type: 'deliberation',
+      model: 'System',
+      content: `Starting deliberation for: "${currentPrompt}"`,
+      phase: 'Initialization'
+    }];
+    setDeliberationMessages(initialMessages);
+    if (onDeliberationUpdate) {
+      onDeliberationUpdate(initialMessages);
+    }
+
+    // Set up IPC listener for this generation session
+    if (window.electronAPI && window.electronAPI.onDeliberationUpdate) {
+      // Remove any existing listeners first
+      if (window.electronAPI.removeDeliberationListener) {
+        window.electronAPI.removeDeliberationListener();
+      }
+
+      // Set up new listener for real-time updates
+      const handleUpdate = message => {
+        // Update current phase and progress
+        if (message.phase) {
+          setCurrentPhase(message.phase);
+          // Estimate progress based on phase
+          let progress = 0;
+          if (message.phase.includes('Deliberation')) {
+            progress = 25;
+          } else if (message.phase.includes('Consensus')) {
+            progress = 50;
+          } else if (message.phase.includes('Generation')) {
+            progress = 75;
+          } else if (message.phase.includes('Evaluation')) {
+            progress = 90;
+          } else if (message.phase.includes('Complete')) {
+            progress = 100;
+          }
+          setProgressPercent(progress);
+        }
+        setDeliberationMessages(prev => {
+          const updated = [...prev, message];
+          if (onDeliberationUpdate) {
+            onDeliberationUpdate(updated);
+          }
+          return updated;
+        });
+      };
+      window.electronAPI.onDeliberationUpdate(handleUpdate);
+    }
     try {
-      const response = await window.electronAPI.generateCode(prompt, code || '', language);
+      // Pass current code as context so models can review it before making changes
+      // Pass null for language - let models decide during deliberation
+      const currentCodeContext = code || '';
+      // Pass existing files to track changes (for multi-file projects)
+      const existingFiles = files || {};
+      const response = await window.electronAPI.generateCode(currentPrompt, currentCodeContext, null, existingFiles);
       if (response.success) {
-        const generatedCode = response.data.code;
+        const resultData = response.data;
+
+        // Build updated messages with deliberation data
+        let updatedMessages = [...initialMessages];
+
+        // Add deliberation messages from result
+        if (resultData.deliberationData) {
+          updatedMessages = [...updatedMessages, ...resultData.deliberationData];
+        }
+
+        // Add final result message
+        if (resultData.files && resultData.isMultiFile) {
+          updatedMessages.push({
+            type: 'file',
+            model: resultData.model,
+            content: `Generated ${Object.keys(resultData.files).length} files based on team consensus`,
+            files: Object.keys(resultData.files),
+            phase: 'Complete'
+          });
+        } else {
+          updatedMessages.push({
+            type: 'generation',
+            model: resultData.model,
+            content: `Code generation complete. Quality score: ${resultData.score?.toFixed(2) || 'N/A'}/10`,
+            phase: 'Complete'
+          });
+        }
+        setDeliberationMessages(updatedMessages);
+        if (onDeliberationUpdate) {
+          onDeliberationUpdate(updatedMessages);
+        }
         setResult({
           type: 'generation',
-          code: generatedCode,
-          model: response.data.model,
-          score: response.data.score,
-          deliberation: response.data.deliberation
+          code: resultData.code,
+          files: resultData.files,
+          isMultiFile: resultData.isMultiFile,
+          model: resultData.model,
+          score: resultData.score,
+          deliberation: resultData.deliberation
         });
-        // Insert code into editor if callback provided (pass prompt for language detection)
+        // Pass full result to handler for multi-file support
         if (onCodeGenerated) {
-          onCodeGenerated(generatedCode, prompt);
+          onCodeGenerated(resultData);
         }
+        // Clear prompt after successful generation so user can type new request
+        setPrompt('');
       } else {
         setError(response.error || 'Generation failed');
+        setLoading(false);
       }
     } catch (err) {
       setError(err.message || 'An error occurred');
-    } finally {
       setLoading(false);
+    } finally {
+      // Always reset loading state
+      setLoading(false);
+      setCurrentPhase('');
+      setProgressPercent(0);
     }
   };
   const handleEdit = async () => {
-    if (!instruction.trim() || !code || !isConnected) return;
+    if (!instruction.trim() || !code || !isConnected || loading) return;
     setLoading(true);
     setError(null);
     setResult(null);
+    setCurrentPhase('Initializing edit...');
+    setProgressPercent(0);
+    const currentInstruction = instruction; // Save instruction before clearing
+
+    // Set up IPC listener for this edit session
+    if (window.electronAPI && window.electronAPI.onDeliberationUpdate) {
+      // Remove any existing listeners first
+      if (window.electronAPI.removeDeliberationListener) {
+        window.electronAPI.removeDeliberationListener();
+      }
+
+      // Set up new listener for real-time updates
+      const handleUpdate = message => {
+        // Update current phase and progress
+        if (message.phase) {
+          setCurrentPhase(message.phase);
+          // Estimate progress based on phase
+          let progress = 0;
+          if (message.phase.includes('Deliberation')) {
+            progress = 25;
+          } else if (message.phase.includes('Consensus')) {
+            progress = 50;
+          } else if (message.phase.includes('Generation')) {
+            progress = 75;
+          } else if (message.phase.includes('Evaluation')) {
+            progress = 90;
+          } else if (message.phase.includes('Complete')) {
+            progress = 100;
+          }
+          setProgressPercent(progress);
+        }
+      };
+      window.electronAPI.onDeliberationUpdate(handleUpdate);
+    }
     try {
-      const response = await window.electronAPI.editCode(code, instruction, '');
+      const response = await window.electronAPI.editCode(code, currentInstruction, '');
       if (response.success) {
         const editedCode = response.data.code;
         setResult({
@@ -36660,15 +36903,26 @@ function AIPanel({
         });
         // Insert edited code into editor if callback provided
         if (onCodeGenerated) {
-          onCodeGenerated(editedCode, instruction);
+          onCodeGenerated(editedCode, currentInstruction);
         }
+        // Clear instruction after successful edit so user can type new request
+        setInstruction('');
       } else {
         setError(response.error || 'Edit failed');
+        setLoading(false);
+        setCurrentPhase('');
+        setProgressPercent(0);
       }
     } catch (err) {
       setError(err.message || 'An error occurred');
-    } finally {
       setLoading(false);
+      setCurrentPhase('');
+      setProgressPercent(0);
+    } finally {
+      // Always reset loading state
+      setLoading(false);
+      setCurrentPhase('');
+      setProgressPercent(0);
     }
   };
   const handleAnalyze = async () => {
@@ -36717,6 +36971,10 @@ function AIPanel({
       })]
     }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
       className: "ai-panel-content",
+      style: {
+        overflowY: 'auto',
+        flex: 1
+      },
       children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
         className: "ai-input-group",
         children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("label", {
@@ -36744,13 +37002,72 @@ function AIPanel({
             value: prompt,
             onChange: e => setPrompt(e.target.value),
             placeholder: "Describe what code you want to generate...",
-            disabled: !isConnected
+            disabled: loading,
+            readOnly: loading,
+            style: {
+              cursor: loading ? 'not-allowed' : 'text',
+              opacity: loading ? 0.6 : 1,
+              backgroundColor: loading ? '#1a1a1a' : '#1e1e1e'
+            }
           })]
         }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("button", {
           className: "ai-button",
           onClick: handleGenerate,
           disabled: !prompt.trim() || loading || !isConnected,
-          children: loading ? 'Generating...' : 'Generate Code'
+          title: !isConnected ? 'Please connect to LMStudio first (check Settings)' : !prompt.trim() ? 'Enter a prompt' : loading ? 'Generating...' : 'Generate Code',
+          children: loading ? 'Generating...' : !isConnected ? 'Not Connected' : 'Generate Code'
+        }), loading && mode === 'generate' && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+          style: {
+            marginTop: '0.75rem'
+          },
+          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+            style: {
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              marginBottom: '0.5rem',
+              fontSize: '0.85rem',
+              color: '#858585'
+            },
+            children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("div", {
+              className: "spinner",
+              style: {
+                width: '16px',
+                height: '16px',
+                border: '2px solid #3e3e42',
+                borderTop: '2px solid #4ec9b0',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite'
+              }
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("span", {
+              children: currentPhase || 'Processing...'
+            })]
+          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("div", {
+            style: {
+              width: '100%',
+              height: '4px',
+              backgroundColor: '#3e3e42',
+              borderRadius: '2px',
+              overflow: 'hidden'
+            },
+            children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("div", {
+              style: {
+                width: `${progressPercent}%`,
+                height: '100%',
+                backgroundColor: '#4ec9b0',
+                transition: 'width 0.3s ease',
+                borderRadius: '2px'
+              }
+            })
+          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("div", {
+            style: {
+              fontSize: '0.7rem',
+              color: '#666',
+              marginTop: '0.25rem',
+              textAlign: 'center'
+            },
+            children: "This may take several minutes on slower systems..."
+          })]
         })]
       }), mode === 'edit' && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)(react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.Fragment, {
         children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
@@ -36761,13 +37078,69 @@ function AIPanel({
             value: instruction,
             onChange: e => setInstruction(e.target.value),
             placeholder: "Describe how to edit the code...",
-            disabled: !isConnected || !activeFile
+            disabled: !isConnected || !activeFile || loading,
+            style: {
+              cursor: !isConnected || !activeFile || loading ? 'not-allowed' : 'text',
+              opacity: !isConnected || !activeFile || loading ? 0.6 : 1
+            }
           })]
         }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("button", {
           className: "ai-button",
           onClick: handleEdit,
           disabled: !instruction.trim() || loading || !isConnected || !activeFile,
           children: loading ? 'Editing...' : 'Edit Code'
+        }), loading && mode === 'edit' && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+          style: {
+            marginTop: '0.75rem'
+          },
+          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+            style: {
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              marginBottom: '0.5rem',
+              fontSize: '0.85rem',
+              color: '#858585'
+            },
+            children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("div", {
+              className: "spinner",
+              style: {
+                width: '16px',
+                height: '16px',
+                border: '2px solid #3e3e42',
+                borderTop: '2px solid #4ec9b0',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite'
+              }
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("span", {
+              children: currentPhase || 'Processing edit...'
+            })]
+          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("div", {
+            style: {
+              width: '100%',
+              height: '4px',
+              backgroundColor: '#3e3e42',
+              borderRadius: '2px',
+              overflow: 'hidden'
+            },
+            children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("div", {
+              style: {
+                width: `${progressPercent}%`,
+                height: '100%',
+                backgroundColor: '#4ec9b0',
+                transition: 'width 0.3s ease',
+                borderRadius: '2px'
+              }
+            })
+          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("div", {
+            style: {
+              fontSize: '0.7rem',
+              color: '#666',
+              marginTop: '0.25rem',
+              textAlign: 'center'
+            },
+            children: "This may take several minutes on slower systems..."
+          })]
         })]
       }), mode === 'analyze' && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)(react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.Fragment, {
         children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
@@ -36791,13 +37164,21 @@ function AIPanel({
       }), loading && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
         className: "ai-loading",
         children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("div", {
-          children: "Processing with multiple models..."
+          children: "Models are discussing the project..."
         }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("div", {
           style: {
             fontSize: '0.75rem',
-            marginTop: '0.5rem'
+            marginTop: '0.5rem',
+            color: '#858585'
           },
-          children: "Using PolyCouncil deliberation"
+          children: "Phase 1: Deliberation \u2192 Phase 2: Consensus \u2192 Phase 3: Code Generation \u2192 Phase 4: Evaluation"
+        }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("div", {
+          style: {
+            fontSize: '0.7rem',
+            marginTop: '0.5rem',
+            color: '#666'
+          },
+          children: "This may take a moment as models collaborate..."
         })]
       }), error && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
         className: "ai-error",
@@ -36824,7 +37205,18 @@ function AIPanel({
               color: '#4ec9b0',
               marginBottom: '0.5rem'
             },
-            children: "\u2713 Code has been inserted into the editor"
+            children: result.isMultiFile && result.files ? /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)(react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.Fragment, {
+              children: ["\u2713 ", Object.keys(result.files).length, " files created and inserted into the editor"]
+            }) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)(react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.Fragment, {
+              children: "\u2713 Code has been inserted into the editor"
+            })
+          }), result.isMultiFile && result.files && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+            style: {
+              marginTop: '0.5rem',
+              fontSize: '0.75rem',
+              color: '#858585'
+            },
+            children: ["Files: ", Object.keys(result.files).join(', ')]
           }), result.score !== undefined && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
             style: {
               marginTop: '0.5rem',
@@ -36838,7 +37230,7 @@ function AIPanel({
               fontSize: '0.75rem',
               color: '#858585'
             },
-            children: [result.deliberation.totalGenerations, " generations, ", result.deliberation.totalEvaluations, " evaluations"]
+            children: [result.deliberation.rounds || 0, " deliberation rounds, ", result.deliberation.totalGenerations, " generations, ", result.deliberation.totalEvaluations, " evaluations"]
           })]
         }), result.analyses && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
           children: [result.analyses.map((analysis, idx) => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
@@ -36925,6 +37317,346 @@ function AIPanel({
 
 /***/ }),
 
+/***/ "./src/renderer/components/DeliberationChat.jsx":
+/*!******************************************************!*\
+  !*** ./src/renderer/components/DeliberationChat.jsx ***!
+  \******************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react */ "./node_modules/react/index.js");
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! react/jsx-runtime */ "./node_modules/react/jsx-runtime.js");
+
+
+function DeliberationChat({
+  messages,
+  isActive
+}) {
+  const messagesEndRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(null);
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({
+      behavior: 'smooth'
+    });
+  };
+  (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
+    scrollToBottom();
+  }, [messages]);
+  const getMessageTypeColor = type => {
+    switch (type) {
+      case 'deliberation':
+        return '#4ec9b0';
+      case 'consensus':
+        return '#dcdcaa';
+      case 'generation':
+        return '#569cd6';
+      case 'evaluation':
+        return '#ce9178';
+      case 'file':
+        return '#4ec9b0';
+      case 'file-edit':
+        return '#4ec9b0';
+      default:
+        return '#858585';
+    }
+  };
+  const getMessageTypeIcon = type => {
+    switch (type) {
+      case 'deliberation':
+        return '💭';
+      case 'consensus':
+        return '🤝';
+      case 'generation':
+        return '⚙️';
+      case 'evaluation':
+        return '⭐';
+      case 'file':
+        return '📄';
+      case 'file-edit':
+        return '✏️';
+      default:
+        return '💬';
+    }
+  };
+  const getOperationIcon = operation => {
+    switch (operation) {
+      case 'created':
+        return '➕';
+      case 'modified':
+        return '✏️';
+      case 'deleted':
+        return '🗑️';
+      default:
+        return '📝';
+    }
+  };
+  const renderFileDiff = (diff, fileName) => {
+    if (!diff || diff.length === 0) return null;
+    return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+      style: {
+        marginTop: '0.75rem',
+        border: '1px solid #3e3e42',
+        borderRadius: '4px',
+        overflow: 'hidden',
+        background: '#1e1e1e'
+      },
+      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("div", {
+        style: {
+          padding: '0.5rem',
+          background: '#2d2d30',
+          borderBottom: '1px solid #3e3e42',
+          fontSize: '0.8rem',
+          fontWeight: '600',
+          color: '#4ec9b0',
+          fontFamily: 'monospace'
+        },
+        children: fileName
+      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("div", {
+        style: {
+          maxHeight: '300px',
+          overflowY: 'auto',
+          fontFamily: 'monospace',
+          fontSize: '0.75rem',
+          lineHeight: '1.4'
+        },
+        children: diff.map((change, idx) => {
+          if (change.type === 'added') {
+            return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+              style: {
+                padding: '0.25rem 0.5rem',
+                background: 'rgba(0, 255, 0, 0.1)',
+                borderLeft: '3px solid #4ec9b0',
+                color: '#d4d4d4',
+                display: 'flex',
+                alignItems: 'flex-start'
+              },
+              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("span", {
+                style: {
+                  color: '#4ec9b0',
+                  marginRight: '0.5rem',
+                  fontWeight: 'bold',
+                  minWidth: '20px'
+                },
+                children: "+"
+              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("span", {
+                style: {
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word'
+                },
+                children: change.content || '\u00A0'
+              })]
+            }, idx);
+          } else if (change.type === 'deleted') {
+            return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+              style: {
+                padding: '0.25rem 0.5rem',
+                background: 'rgba(255, 0, 0, 0.1)',
+                borderLeft: '3px solid #ff6b6b',
+                color: '#858585',
+                textDecoration: 'line-through',
+                display: 'flex',
+                alignItems: 'flex-start'
+              },
+              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("span", {
+                style: {
+                  color: '#ff6b6b',
+                  marginRight: '0.5rem',
+                  fontWeight: 'bold',
+                  minWidth: '20px'
+                },
+                children: "-"
+              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("span", {
+                style: {
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word'
+                },
+                children: change.content || '\u00A0'
+              })]
+            }, idx);
+          } else if (change.type === 'modified') {
+            return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+              children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+                style: {
+                  padding: '0.25rem 0.5rem',
+                  background: 'rgba(255, 0, 0, 0.1)',
+                  borderLeft: '3px solid #ff6b6b',
+                  color: '#858585',
+                  textDecoration: 'line-through',
+                  display: 'flex',
+                  alignItems: 'flex-start'
+                },
+                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("span", {
+                  style: {
+                    color: '#ff6b6b',
+                    marginRight: '0.5rem',
+                    fontWeight: 'bold',
+                    minWidth: '20px'
+                  },
+                  children: "-"
+                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("span", {
+                  style: {
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word'
+                  },
+                  children: change.oldContent || '\u00A0'
+                })]
+              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+                style: {
+                  padding: '0.25rem 0.5rem',
+                  background: 'rgba(0, 255, 0, 0.1)',
+                  borderLeft: '3px solid #4ec9b0',
+                  color: '#d4d4d4',
+                  display: 'flex',
+                  alignItems: 'flex-start'
+                },
+                children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("span", {
+                  style: {
+                    color: '#4ec9b0',
+                    marginRight: '0.5rem',
+                    fontWeight: 'bold',
+                    minWidth: '20px'
+                  },
+                  children: "+"
+                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("span", {
+                  style: {
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word'
+                  },
+                  children: change.newContent || '\u00A0'
+                })]
+              })]
+            }, idx);
+          }
+          return null;
+        })
+      })]
+    });
+  };
+  if (!isActive) {
+    return null;
+  }
+  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+    className: "deliberation-chat",
+    style: {
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      background: '#1e1e1e',
+      overflow: 'hidden'
+    },
+    children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+      style: {
+        padding: '1rem',
+        borderBottom: '1px solid #3e3e42',
+        background: '#2d2d30'
+      },
+      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("h3", {
+        style: {
+          margin: 0,
+          color: '#4ec9b0',
+          fontSize: '1rem'
+        },
+        children: "\uD83E\uDD16 Model Deliberation"
+      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("p", {
+        style: {
+          margin: '0.25rem 0 0 0',
+          fontSize: '0.75rem',
+          color: '#858585'
+        },
+        children: "Watch models discuss and collaborate in real-time"
+      })]
+    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+      style: {
+        flex: 1,
+        overflowY: 'auto',
+        padding: '1rem',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1rem'
+      },
+      children: [messages.length === 0 ? /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("div", {
+        style: {
+          textAlign: 'center',
+          color: '#858585',
+          padding: '2rem',
+          fontSize: '0.9rem'
+        },
+        children: "No deliberation activity yet. Start generating code to see models collaborate!"
+      }) : messages.map((msg, idx) => /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+        style: {
+          background: '#252526',
+          border: `1px solid ${getMessageTypeColor(msg.type)}`,
+          borderRadius: '6px',
+          padding: '0.75rem',
+          borderLeft: `4px solid ${getMessageTypeColor(msg.type)}`
+        },
+        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+          style: {
+            display: 'flex',
+            alignItems: 'center',
+            marginBottom: '0.5rem',
+            gap: '0.5rem'
+          },
+          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("span", {
+            style: {
+              fontSize: '1rem'
+            },
+            children: getMessageTypeIcon(msg.type)
+          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("span", {
+            style: {
+              color: getMessageTypeColor(msg.type),
+              fontWeight: '600',
+              fontSize: '0.85rem'
+            },
+            children: msg.model || msg.type
+          }), msg.fileName && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("span", {
+            style: {
+              color: '#858585',
+              fontSize: '0.75rem',
+              fontFamily: 'monospace',
+              marginLeft: '0.5rem'
+            },
+            children: [getOperationIcon(msg.operation), " ", msg.fileName]
+          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("span", {
+            style: {
+              color: '#666',
+              fontSize: '0.7rem',
+              marginLeft: 'auto'
+            },
+            children: msg.phase || msg.type
+          })]
+        }), msg.type === 'file-edit' && msg.diff ? renderFileDiff(msg.diff, msg.fileName) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("div", {
+          style: {
+            color: '#d4d4d4',
+            fontSize: '0.85rem',
+            whiteSpace: 'pre-wrap',
+            wordWrap: 'break-word',
+            lineHeight: '1.5'
+          },
+          children: msg.content
+        }), msg.files && msg.type !== 'file-edit' && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsxs)("div", {
+          style: {
+            marginTop: '0.5rem',
+            paddingTop: '0.5rem',
+            borderTop: '1px solid #3e3e42',
+            fontSize: '0.75rem',
+            color: '#858585'
+          },
+          children: ["\uD83D\uDCC1 Files: ", msg.files.join(', ')]
+        })]
+      }, idx)), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("div", {
+        ref: messagesEndRef
+      })]
+    })]
+  });
+}
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (DeliberationChat);
+
+/***/ }),
+
 /***/ "./src/renderer/components/Editor.jsx":
 /*!********************************************!*\
   !*** ./src/renderer/components/Editor.jsx ***!
@@ -36946,27 +37678,110 @@ function Editor({
   filePath,
   content,
   language,
+  previousContent,
   onSave,
   onContentChange,
   onRun
 }) {
   const [editorContent, setEditorContent] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(content);
   const editorRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(null);
+  const monacoRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(null);
+  const decorationsRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)([]);
+  const isUserTypingRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(false);
+  const lastContentRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(content);
+  const currentFilePathRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(filePath);
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
-    // Update editor content when prop changes (only if different to prevent loops)
-    if (editorRef.current) {
+    // Reset typing flag when file changes
+    if (filePath !== currentFilePathRef.current) {
+      isUserTypingRef.current = false;
+      currentFilePathRef.current = filePath;
+    }
+
+    // Only update if content prop changed externally (not from user typing)
+    // and it's different from what's currently in the editor
+    if (editorRef.current && !isUserTypingRef.current) {
       const currentValue = editorRef.current.getValue();
-      if (content !== currentValue) {
+      // Only update if the prop content is actually different from editor content
+      if (content !== currentValue && content !== lastContentRef.current) {
+        const oldContent = currentValue;
         editorRef.current.setValue(content);
         setEditorContent(content);
+        lastContentRef.current = content;
+
+        // Update change decorations if previous content exists
+        if (previousContent && previousContent !== content && monacoRef.current) {
+          updateChangeDecorations(editorRef.current, monacoRef.current, previousContent, content);
+        } else if (oldContent && oldContent !== content && monacoRef.current) {
+          // Use current value as previous if no previousContent provided
+          updateChangeDecorations(editorRef.current, monacoRef.current, oldContent, content);
+        }
       }
-    } else {
+    } else if (!editorRef.current) {
       // If editor not mounted yet, just update state
       setEditorContent(content);
+      lastContentRef.current = content;
     }
-  }, [content, filePath]);
+  }, [content, filePath, previousContent]);
+  const updateChangeDecorations = react__WEBPACK_IMPORTED_MODULE_0___default().useCallback((editor, monaco, oldText, newText) => {
+    // Clear existing decorations
+    if (decorationsRef.current.length > 0) {
+      editor.deltaDecorations(decorationsRef.current, []);
+      decorationsRef.current = [];
+    }
+    if (!oldText || !newText) return;
+    const oldLines = oldText.split('\n');
+    const newLines = newText.split('\n');
+    const decorations = [];
+
+    // Simple line-by-line diff
+    const maxLines = Math.max(oldLines.length, newLines.length);
+    for (let i = 0; i < maxLines; i++) {
+      const oldLine = oldLines[i] || '';
+      const newLine = newLines[i] || '';
+      if (oldLine !== newLine) {
+        if (oldLine === '' && newLine !== '') {
+          // Added line (green)
+          decorations.push({
+            range: new monaco.Range(i + 1, 1, i + 1, newLine.length + 1),
+            options: {
+              isWholeLine: true,
+              className: 'line-added',
+              glyphMarginClassName: 'line-added-glyph',
+              marginClassName: 'line-added-margin'
+            }
+          });
+        } else if (oldLine !== '' && newLine === '') {
+          // Deleted line (red)
+          decorations.push({
+            range: new monaco.Range(i + 1, 1, i + 1, 1),
+            options: {
+              isWholeLine: true,
+              className: 'line-deleted',
+              glyphMarginClassName: 'line-deleted-glyph',
+              marginClassName: 'line-deleted-margin'
+            }
+          });
+        } else {
+          // Modified line (yellow/orange)
+          decorations.push({
+            range: new monaco.Range(i + 1, 1, i + 1, newLine.length + 1),
+            options: {
+              isWholeLine: true,
+              className: 'line-modified',
+              glyphMarginClassName: 'line-modified-glyph',
+              marginClassName: 'line-modified-margin'
+            }
+          });
+        }
+      }
+    }
+    if (decorations.length > 0 && editor && monaco) {
+      decorationsRef.current = editor.deltaDecorations([], decorations);
+    }
+  }, []);
   const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor;
+    monacoRef.current = monaco;
 
     // Configure keyboard shortcuts
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
@@ -36980,17 +37795,31 @@ function Editor({
         onRun(filePath, language, currentContent);
       });
     }
+
+    // Apply change decorations if previous content exists
+    if (previousContent && previousContent !== content) {
+      updateChangeDecorations(editor, monaco, previousContent, content);
+    }
   };
   const handleEditorChange = value => {
     const newValue = value || '';
+    isUserTypingRef.current = true;
     setEditorContent(newValue);
+    lastContentRef.current = newValue;
+
     // Notify parent of content changes (debounced to prevent excessive updates)
     if (onContentChange) {
       // Use a small timeout to debounce rapid changes
       clearTimeout(handleEditorChange.timeout);
       handleEditorChange.timeout = setTimeout(() => {
+        isUserTypingRef.current = false;
         onContentChange(newValue);
       }, 300);
+    } else {
+      // Reset flag after a short delay if no callback
+      setTimeout(() => {
+        isUserTypingRef.current = false;
+      }, 100);
     }
   };
   const handleSave = () => {
@@ -37543,10 +38372,7 @@ function StatusBar({
     className: "status-bar",
     children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("div", {
       className: "status-item",
-      children: isConnected ? '✓ LMStudio' : '✗ LMStudio'
-    }), language && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("div", {
-      className: "status-item",
-      children: language
+      children: isConnected ? '✓ LMStudio Connected' : '✗ LMStudio Disconnected'
     }), activeFile && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_1__.jsx)("div", {
       className: "status-item",
       children: activeFile
@@ -37741,8 +38567,10 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _components_AIPanel__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./components/AIPanel */ "./src/renderer/components/AIPanel.jsx");
 /* harmony import */ var _components_StatusBar__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./components/StatusBar */ "./src/renderer/components/StatusBar.jsx");
 /* harmony import */ var _components_Settings__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./components/Settings */ "./src/renderer/components/Settings.jsx");
-/* harmony import */ var _styles_main_css__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./styles/main.css */ "./src/renderer/styles/main.css");
-/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! react/jsx-runtime */ "./node_modules/react/jsx-runtime.js");
+/* harmony import */ var _components_DeliberationChat__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./components/DeliberationChat */ "./src/renderer/components/DeliberationChat.jsx");
+/* harmony import */ var _styles_main_css__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./styles/main.css */ "./src/renderer/styles/main.css");
+/* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! react/jsx-runtime */ "./node_modules/react/jsx-runtime.js");
+
 
 
 
@@ -37760,6 +38588,10 @@ function App() {
   const [isConnected, setIsConnected] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false);
   const [showSettings, setShowSettings] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false);
   const [projectPath, setProjectPath] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(null);
+  const [deliberationMessages, setDeliberationMessages] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
+  const [activeTab, setActiveTab] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('editor'); // 'editor' or 'deliberation'
+  const [fileVersions, setFileVersions] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({}); // Track previous versions for diff
+
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
     // Check LMStudio connection and load models
     checkConnection();
@@ -37847,45 +38679,128 @@ function App() {
     // Default to current language or javascript
     return language || 'javascript';
   };
-  const handleCodeGenerated = async (generatedCode, prompt = '') => {
-    // Detect language from prompt and generated code
-    const detectedLang = detectLanguageFromPrompt(prompt, generatedCode);
-    setLanguage(detectedLang);
-
-    // Determine file name based on detected language
-    const getDefaultFileName = lang => {
-      const extensions = {
-        javascript: 'index.js',
-        typescript: 'index.ts',
-        python: 'main.py',
-        java: 'Main.java',
-        cpp: 'main.cpp',
-        c: 'main.c',
-        html: 'index.html',
-        css: 'style.css'
-      };
-      return extensions[lang] || 'generated.js';
+  const handleCodeGenerated = async result => {
+    // Store previous versions before updating for change tracking
+    const updateFileVersions = fileList => {
+      setFileVersions(prev => {
+        const newVersions = {
+          ...prev
+        };
+        Object.keys(fileList).forEach(fileName => {
+          if (files[fileName] !== undefined) {
+            newVersions[fileName] = files[fileName];
+          }
+        });
+        return newVersions;
+      });
     };
-    const fileName = activeFile || getDefaultFileName(detectedLang);
-    setFiles(prev => ({
-      ...prev,
-      [fileName]: generatedCode
-    }));
-    setActiveFile(fileName);
 
-    // Auto-save to project folder if project is open
-    if (projectPath) {
-      try {
-        const result = await window.electronAPI.saveFile(fileName, generatedCode);
-        if (result.success) {
-          console.log(`File auto-saved to: ${result.path}`);
+    // Handle multiple files if generated
+    if (result.files && result.isMultiFile) {
+      const newFiles = {};
+
+      // Track previous versions
+      updateFileVersions(result.files);
+
+      // Add all generated files to state
+      Object.entries(result.files).forEach(([fileName, content]) => {
+        newFiles[fileName] = content;
+      });
+      setFiles(prev => ({
+        ...prev,
+        ...newFiles
+      }));
+
+      // Open the first file (usually index.html for websites)
+      const firstFile = Object.keys(newFiles)[0];
+      if (firstFile) {
+        const ext = firstFile.split('.').pop();
+        const langMap = {
+          'js': 'javascript',
+          'html': 'html',
+          'css': 'css',
+          'ts': 'typescript',
+          'py': 'python',
+          'java': 'java',
+          'cpp': 'cpp',
+          'c': 'c'
+        };
+        setLanguage(langMap[ext] || 'javascript');
+        setActiveFile(firstFile);
+      }
+
+      // Auto-save all files to project folder
+      if (projectPath) {
+        try {
+          for (const [fileName, content] of Object.entries(newFiles)) {
+            const saveResult = await window.electronAPI.saveFile(fileName, content);
+            if (saveResult.success) {
+              console.log(`File auto-saved: ${fileName} -> ${saveResult.path}`);
+            }
+          }
+        } catch (error) {
+          console.error('Failed to auto-save files:', error);
         }
-      } catch (error) {
-        console.error('Failed to auto-save file:', error);
+      }
+    } else {
+      // Single file generation (backward compatibility)
+      const generatedCode = result.code || result;
+      const prompt = result.prompt || '';
+
+      // Detect language from prompt and generated code
+      const detectedLang = detectLanguageFromPrompt(prompt, generatedCode);
+      setLanguage(detectedLang);
+
+      // Determine file name based on detected language
+      const getDefaultFileName = lang => {
+        const extensions = {
+          javascript: 'index.js',
+          typescript: 'index.ts',
+          python: 'main.py',
+          java: 'Main.java',
+          cpp: 'main.cpp',
+          c: 'main.c',
+          html: 'index.html',
+          css: 'style.css'
+        };
+        return extensions[lang] || 'generated.js';
+      };
+      const fileName = activeFile || getDefaultFileName(detectedLang);
+
+      // Track previous version
+      if (files[fileName] !== undefined) {
+        setFileVersions(prev => ({
+          ...prev,
+          [fileName]: files[fileName]
+        }));
+      }
+      setFiles(prev => ({
+        ...prev,
+        [fileName]: generatedCode
+      }));
+      setActiveFile(fileName);
+
+      // Auto-save to project folder if project is open
+      if (projectPath) {
+        try {
+          const saveResult = await window.electronAPI.saveFile(fileName, generatedCode);
+          if (saveResult.success) {
+            console.log(`File auto-saved to: ${saveResult.path}`);
+          }
+        } catch (error) {
+          console.error('Failed to auto-save file:', error);
+        }
       }
     }
   };
   const handleEditorContentChange = (filePath, content) => {
+    // Track previous version for change highlighting
+    if (!fileVersions[filePath]) {
+      setFileVersions(prev => ({
+        ...prev,
+        [filePath]: files[filePath] || ''
+      }));
+    }
     setFiles(prev => ({
       ...prev,
       [filePath]: content
@@ -37895,8 +38810,17 @@ function App() {
     const result = await window.electronAPI.newProject();
     if (result.success && result.path) {
       setProjectPath(result.path);
-      setFiles({});
-      setActiveFile(null);
+      // Load existing files if any
+      if (result.files && Object.keys(result.files).length > 0) {
+        setFiles(result.files);
+        const firstFile = Object.keys(result.files)[0];
+        if (firstFile) {
+          handleFileSelect(firstFile, result.files[firstFile]);
+        }
+      } else {
+        setFiles({});
+        setActiveFile(null);
+      }
     }
   };
   const handleOpenProject = async () => {
@@ -37952,11 +38876,11 @@ function App() {
       // Cleanup if needed
     };
   }, [files]);
-  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsxs)("div", {
+  return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsxs)("div", {
     className: "app-container",
-    children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)("div", {
+    children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)("div", {
       className: "sidebar",
-      children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)(_components_FileExplorer__WEBPACK_IMPORTED_MODULE_3__["default"], {
+      children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)(_components_FileExplorer__WEBPACK_IMPORTED_MODULE_3__["default"], {
         files: files,
         onFileSelect: handleFileSelect,
         onFileCreate: handleFileCreate,
@@ -37966,45 +38890,65 @@ function App() {
         onOpenProject: handleOpenProject,
         onSaveProject: handleSaveProject
       })
-    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsxs)("div", {
+    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsxs)("div", {
       className: "main-content",
-      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)("div", {
+      children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsxs)("div", {
         className: "editor-container",
-        children: activeFile ? /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)(_components_Editor__WEBPACK_IMPORTED_MODULE_2__["default"], {
+        children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)("div", {
+          className: "editor-tabs-container",
+          children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsxs)("div", {
+            className: "editor-tab-bar",
+            children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)("button", {
+              className: `editor-tab-button ${activeTab === 'editor' ? 'active' : ''}`,
+              onClick: () => setActiveTab('editor'),
+              children: "\uD83D\uDCDD Editor"
+            }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)("button", {
+              className: `editor-tab-button ${activeTab === 'deliberation' ? 'active' : ''}`,
+              onClick: () => setActiveTab('deliberation'),
+              children: "\uD83E\uDD16 Deliberation"
+            })]
+          })
+        }), activeTab === 'editor' ? activeFile ? /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)(_components_Editor__WEBPACK_IMPORTED_MODULE_2__["default"], {
           filePath: activeFile,
           content: files[activeFile] || '',
+          previousContent: fileVersions[activeFile],
           language: language,
           onSave: handleFileSave,
           onContentChange: content => handleEditorContentChange(activeFile, content),
           onRun: handleRunCode
-        }) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsxs)("div", {
+        }) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsxs)("div", {
           className: "welcome-screen",
-          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)("h1", {
+          children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)("h1", {
             children: "PolyCode IDE"
-          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)("p", {
+          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)("p", {
             children: "AI-Powered IDE with Multi-Model Deliberation"
-          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)("p", {
+          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)("p", {
             className: "status",
             children: isConnected ? '✓ Connected to LMStudio' : '✗ LMStudio not connected'
-          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)("p", {
+          }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)("p", {
             className: "hint",
             children: "Open a file or create a new one to get started"
           })]
-        })
-      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)(_components_AIPanel__WEBPACK_IMPORTED_MODULE_4__["default"], {
+        }) : /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)(_components_DeliberationChat__WEBPACK_IMPORTED_MODULE_7__["default"], {
+          messages: deliberationMessages,
+          isActive: activeTab === 'deliberation'
+        })]
+      }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)(_components_AIPanel__WEBPACK_IMPORTED_MODULE_4__["default"], {
         activeFile: activeFile,
         code: activeFile ? files[activeFile] : '',
         language: language,
         models: models,
         isConnected: isConnected,
-        onCodeGenerated: handleCodeGenerated
+        files: files,
+        onCodeGenerated: handleCodeGenerated,
+        onDeliberationUpdate: messages => setDeliberationMessages(messages)
       })]
-    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)(_components_StatusBar__WEBPACK_IMPORTED_MODULE_5__["default"], {
+    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)(_components_StatusBar__WEBPACK_IMPORTED_MODULE_5__["default"], {
       language: language,
       isConnected: isConnected,
       activeFile: activeFile,
       onSettingsClick: () => setShowSettings(true)
-    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)(_components_Settings__WEBPACK_IMPORTED_MODULE_6__["default"], {
+    }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)(_components_Settings__WEBPACK_IMPORTED_MODULE_6__["default"], {
       isOpen: showSettings,
       onClose: () => {
         setShowSettings(false);
@@ -38016,7 +38960,7 @@ function App() {
 }
 const container = document.getElementById('root');
 const root = (0,react_dom_client__WEBPACK_IMPORTED_MODULE_1__.createRoot)(container);
-root.render(/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_8__.jsx)(App, {}));
+root.render(/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_9__.jsx)(App, {}));
 })();
 
 /******/ })()

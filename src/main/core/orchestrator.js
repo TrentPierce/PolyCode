@@ -35,8 +35,9 @@ class PolyCouncilOrchestrator {
 
   /**
    * Initialize and configure available models
+   * @param {Array} selectedModels - Optional array of model IDs from settings
    */
-  async initialize() {
+  async initialize(selectedModels = []) {
     try {
       const connection = await this.lmClient.checkConnection();
       if (!connection.connected) {
@@ -46,12 +47,23 @@ class PolyCouncilOrchestrator {
       const availableModels = await this.lmClient.getModels();
       this.models = availableModels.map(m => m.id);
 
-      // Default configuration: use first 2-4 models if available
-      if (this.models.length > 0) {
-        this.modelConfigs = {
-          models: this.models.slice(0, Math.min(4, this.models.length)),
-          personas: Object.keys(this.personas).slice(0, Math.min(this.models.length, 4))
-        };
+      // Only configure models if explicitly provided (from settings)
+      // Do NOT auto-select models - require explicit user selection
+      if (selectedModels && selectedModels.length > 0) {
+        // Filter to only use models that are actually available
+        const validModels = selectedModels.filter(model => this.models.includes(model));
+        if (validModels.length > 0) {
+          this.modelConfigs = {
+            models: validModels,
+            personas: Object.keys(this.personas).slice(0, validModels.length)
+          };
+        } else {
+          // No valid models from selection, clear config
+          this.modelConfigs = { models: [], personas: [] };
+        }
+      } else {
+        // No models selected - require user to select in settings
+        this.modelConfigs = { models: [], personas: [] };
       }
 
       return { success: true, models: this.models };
@@ -63,16 +75,22 @@ class PolyCouncilOrchestrator {
 
   /**
    * Configure which models and personas to use
+   * Only uses explicitly provided models - no auto-selection
    */
   async configureModels(config) {
     // Validate that configured models exist
     const validModels = (config.models || []).filter(model => this.models.includes(model));
-    const modelsToUse = validModels.length > 0 ? validModels : this.models.slice(0, Math.min(4, this.models.length));
     
-    this.modelConfigs = {
-      models: modelsToUse,
-      personas: config.personas || Object.keys(this.personas).slice(0, modelsToUse.length)
-    };
+    // Only use explicitly selected models - no fallback to auto-selection
+    if (validModels.length > 0) {
+      this.modelConfigs = {
+        models: validModels,
+        personas: config.personas || Object.keys(this.personas).slice(0, validModels.length)
+      };
+    } else {
+      // No valid models - clear config (user must select models in settings)
+      this.modelConfigs = { models: [], personas: [] };
+    }
   }
 
   /**
@@ -86,10 +104,48 @@ class PolyCouncilOrchestrator {
   }
 
   /**
+   * Calculate line-by-line diff between two code strings
+   */
+  calculateDiff(oldCode, newCode) {
+    if (!oldCode) oldCode = '';
+    if (!newCode) newCode = '';
+    
+    const oldLines = oldCode.split('\n');
+    const newLines = newCode.split('\n');
+    const diff = [];
+    
+    // Simple line-by-line comparison
+    const maxLines = Math.max(oldLines.length, newLines.length);
+    
+    for (let i = 0; i < maxLines; i++) {
+      const oldLine = oldLines[i] || '';
+      const newLine = newLines[i] || '';
+      
+      if (oldLine === '' && newLine !== '') {
+        // Added line
+        diff.push({ type: 'added', line: i + 1, content: newLine });
+      } else if (oldLine !== '' && newLine === '') {
+        // Deleted line
+        diff.push({ type: 'deleted', line: i + 1, content: oldLine });
+      } else if (oldLine !== newLine) {
+        // Modified line
+        diff.push({ type: 'modified', line: i + 1, oldContent: oldLine, newContent: newLine });
+      }
+    }
+    
+    return diff;
+  }
+
+  /**
    * Generate code using multi-model deliberation
    * Models discuss the project together, then collaborate to generate the best code
+   * @param {string} prompt - User's request
+   * @param {string} context - Current code context (existing files/code)
+   * @param {string} language - Target language (optional, models decide if null)
+   * @param {Function} onProgress - Optional callback for real-time updates (message, phase)
+   * @param {Object} existingFiles - Optional object with existing file contents { filename: content }
    */
-  async generateCode(prompt, context = '', language = null) {
+  async generateCode(prompt, context = '', language = null, onProgress = null, existingFiles = {}) {
     if (this.models.length === 0) {
       await this.initialize();
     }
@@ -102,13 +158,26 @@ class PolyCouncilOrchestrator {
     if (modelsToUse.length === 0) {
       throw new Error('No models available. Please select models in Settings.');
     }
+    
+    // Ensure context includes current code if provided
+    const fullContext = context ? `Current code/files:\n${context}\n\n` : '';
 
     // Phase 1: Deliberation - Models discuss the project and decide approach
     const deliberationResults = [];
     for (let i = 0; i < modelsToUse.length; i++) {
       const model = modelsToUse[i];
       const otherModels = modelsToUse.filter(m => m !== model);
-      const deliberationPrompt = this.buildDeliberationPrompt(prompt, context, otherModels, deliberationResults);
+      const deliberationPrompt = this.buildDeliberationPrompt(prompt, fullContext, otherModels, deliberationResults);
+      
+      // Send progress update
+      if (onProgress) {
+        onProgress({
+          type: 'deliberation',
+          model: model,
+          content: `Starting deliberation round ${i + 1}...`,
+          phase: `Deliberation Round ${i + 1}`
+        });
+      }
       
       try {
         const result = await this.lmClient.generateCompletion(model, deliberationPrompt, {
@@ -121,15 +190,43 @@ class PolyCouncilOrchestrator {
           deliberation: result.text,
           round: i + 1
         });
+        
+        // Send real-time update with actual deliberation content
+        if (onProgress) {
+          onProgress({
+            type: 'deliberation',
+            model: model,
+            content: result.text,
+            phase: `Deliberation Round ${i + 1}`
+          });
+        }
       } catch (error) {
         console.error(`Deliberation failed for model ${model}:`, error);
+        if (onProgress) {
+          onProgress({
+            type: 'deliberation',
+            model: model,
+            content: `Error: ${error.message}`,
+            phase: `Deliberation Round ${i + 1} - Failed`
+          });
+        }
       }
     }
 
     // Phase 2: Consensus - Models agree on the best approach
-    const consensusPrompt = this.buildConsensusPrompt(prompt, context, deliberationResults);
+    const consensusPrompt = this.buildConsensusPrompt(prompt, fullContext, deliberationResults);
     const consensusResults = [];
     for (const model of modelsToUse) {
+      // Send progress update
+      if (onProgress) {
+        onProgress({
+          type: 'consensus',
+          model: model,
+          content: `Reaching consensus...`,
+          phase: 'Consensus'
+        });
+      }
+      
       try {
         const result = await this.lmClient.generateCompletion(model, consensusPrompt, {
           temperature: 0.5,
@@ -139,15 +236,43 @@ class PolyCouncilOrchestrator {
           model,
           consensus: result.text
         });
+        
+        // Send real-time update with consensus content
+        if (onProgress) {
+          onProgress({
+            type: 'consensus',
+            model: model,
+            content: result.text,
+            phase: 'Consensus'
+          });
+        }
       } catch (error) {
         console.error(`Consensus failed for model ${model}:`, error);
+        if (onProgress) {
+          onProgress({
+            type: 'consensus',
+            model: model,
+            content: `Error: ${error.message}`,
+            phase: 'Consensus - Failed'
+          });
+        }
       }
     }
 
     // Phase 3: Code Generation - Models generate code based on their discussion
     const generations = [];
     for (const model of modelsToUse) {
-      const generationPrompt = this.buildGenerationPrompt(prompt, context, deliberationResults, consensusResults);
+      const generationPrompt = this.buildGenerationPrompt(prompt, fullContext, deliberationResults, consensusResults);
+      
+      // Send progress update
+      if (onProgress) {
+        onProgress({
+          type: 'generation',
+          model: model,
+          content: `Generating code...`,
+          phase: 'Code Generation'
+        });
+      }
       
       try {
         const result = await this.lmClient.generateCompletion(model, generationPrompt, {
@@ -172,8 +297,26 @@ class PolyCouncilOrchestrator {
           code: code,
           usage: result.usage
         });
+        
+        // Send real-time update
+        if (onProgress) {
+          onProgress({
+            type: 'generation',
+            model: model,
+            content: `Generated ${code.length} characters of code`,
+            phase: 'Code Generation'
+          });
+        }
       } catch (error) {
         console.error(`Generation failed for model ${model}:`, error);
+        if (onProgress) {
+          onProgress({
+            type: 'generation',
+            model: model,
+            content: `Error: ${error.message}`,
+            phase: 'Code Generation - Failed'
+          });
+        }
       }
     }
 
@@ -187,6 +330,16 @@ class PolyCouncilOrchestrator {
       for (const evaluatorModel of modelsToUse) {
         if (evaluatorModel === generation.model) continue; // Don't self-evaluate
         
+        // Send progress update
+        if (onProgress) {
+          onProgress({
+            type: 'evaluation',
+            model: evaluatorModel,
+            content: `Evaluating code from ${generation.model}...`,
+            phase: 'Evaluation'
+          });
+        }
+        
         try {
           const score = await this.evaluateGeneration(
             evaluatorModel,
@@ -199,8 +352,26 @@ class PolyCouncilOrchestrator {
             evaluator: evaluatorModel,
             score
           });
+          
+          // Send real-time update
+          if (onProgress) {
+            onProgress({
+              type: 'evaluation',
+              model: evaluatorModel,
+              content: `Scored ${generation.model}'s code: ${score.toFixed(2)}/10`,
+              phase: 'Evaluation'
+            });
+          }
         } catch (error) {
           console.error(`Evaluation failed for model ${evaluatorModel}:`, error);
+          if (onProgress) {
+            onProgress({
+              type: 'evaluation',
+              model: evaluatorModel,
+              content: `Error evaluating: ${error.message}`,
+              phase: 'Evaluation - Failed'
+            });
+          }
         }
       }
     }
@@ -209,8 +380,104 @@ class PolyCouncilOrchestrator {
     const aggregatedScores = this.aggregateScores(generations, evaluations);
     const bestGeneration = this.selectBestGeneration(generations, aggregatedScores);
 
+    // Phase 6: Parse multiple files if this is a web project
+    const parsedFiles = this.parseMultipleFiles(bestGeneration.code);
+    const isMultiFile = Object.keys(parsedFiles).length > 1;
+    
+    // Send file edit updates for each file (real-time diff display)
+    if (onProgress) {
+      for (const [fileName, newContent] of Object.entries(parsedFiles)) {
+        const oldContent = existingFiles[fileName] || '';
+        const diff = this.calculateDiff(oldContent, newContent);
+        
+        if (diff.length > 0 || !oldContent) {
+          // Determine file operation type
+          let operation = 'modified';
+          if (!oldContent && newContent) {
+            operation = 'created';
+          } else if (oldContent && !newContent) {
+            operation = 'deleted';
+          }
+          
+          onProgress({
+            type: 'file-edit',
+            model: bestGeneration.model,
+            fileName: fileName,
+            operation: operation,
+            diff: diff,
+            content: newContent,
+            phase: 'Code Generation'
+          });
+        }
+      }
+      
+      // If single file (not multi-file), send edit update
+      if (!isMultiFile && bestGeneration.code) {
+        const oldContent = context || '';
+        const diff = this.calculateDiff(oldContent, bestGeneration.code);
+        
+        if (diff.length > 0 || !oldContent) {
+          onProgress({
+            type: 'file-edit',
+            model: bestGeneration.model,
+            fileName: 'generated code',
+            operation: oldContent ? 'modified' : 'created',
+            diff: diff,
+            content: bestGeneration.code,
+            phase: 'Code Generation'
+          });
+        }
+      }
+    }
+
+    // Build deliberation data for UI display
+    const deliberationData = [];
+    
+    // Add deliberation phase messages
+    deliberationResults.forEach((delib, idx) => {
+      deliberationData.push({
+        type: 'deliberation',
+        model: delib.model,
+        content: delib.deliberation,
+        phase: `Deliberation Round ${delib.round}`
+      });
+    });
+    
+    // Add consensus phase messages
+    consensusResults.forEach((consensus) => {
+      deliberationData.push({
+        type: 'consensus',
+        model: consensus.model,
+        content: consensus.consensus,
+        phase: 'Consensus'
+      });
+    });
+    
+    // Add generation phase messages
+    generations.forEach((gen) => {
+      deliberationData.push({
+        type: 'generation',
+        model: gen.model,
+        content: `Generated code (${gen.code.length} characters)`,
+        phase: 'Code Generation'
+      });
+    });
+    
+    // Add evaluation summary
+    if (evaluations.length > 0) {
+      const avgScore = Object.values(aggregatedScores).reduce((a, b) => a + b, 0) / Object.keys(aggregatedScores).length;
+      deliberationData.push({
+        type: 'evaluation',
+        model: 'System',
+        content: `Evaluation complete. Average score: ${avgScore.toFixed(2)}/10. Best model: ${bestGeneration.model}`,
+        phase: 'Evaluation'
+      });
+    }
+
     return {
-      code: bestGeneration.code,
+      code: bestGeneration.code, // Keep original for single-file compatibility
+      files: parsedFiles, // New: multiple files
+      isMultiFile: isMultiFile,
       model: bestGeneration.model,
       score: aggregatedScores[bestGeneration.model] || 0,
       allGenerations: generations.map(g => ({
@@ -221,7 +488,8 @@ class PolyCouncilOrchestrator {
         rounds: deliberationResults.length,
         totalGenerations: generations.length,
         totalEvaluations: evaluations.length
-      }
+      },
+      deliberationData: deliberationData // New: detailed deliberation messages
     };
   }
 
@@ -232,8 +500,9 @@ class PolyCouncilOrchestrator {
     let deliberationText = `You are part of a team of AI developers working together to build a project.\n\n`;
     deliberationText += `User's Request: ${prompt}\n\n`;
     
-    if (context) {
-      deliberationText += `Context:\n${context}\n\n`;
+    if (context && context.trim()) {
+      deliberationText += `Current Code Context:\n${context}\n\n`;
+      deliberationText += `IMPORTANT: Review the existing code above before making any changes. Understand the current implementation, structure, and patterns before proposing modifications.\n\n`;
     }
     
     if (previousDeliberations.length > 0) {
@@ -264,8 +533,9 @@ class PolyCouncilOrchestrator {
     let consensusText = `Based on the team's discussion, we need to reach consensus on the best approach.\n\n`;
     consensusText += `User's Request: ${prompt}\n\n`;
     
-    if (context) {
-      consensusText += `Context:\n${context}\n\n`;
+    if (context && context.trim()) {
+      consensusText += `Current Code Context:\n${context}\n\n`;
+      consensusText += `IMPORTANT: Consider the existing code when reaching consensus. Ensure your approach is compatible with the current implementation.\n\n`;
     }
     
     consensusText += `Team Discussion Summary:\n`;
@@ -290,8 +560,9 @@ class PolyCouncilOrchestrator {
     let genText = `Generate the complete, production-ready code for this project.\n\n`;
     genText += `User's Request: ${prompt}\n\n`;
     
-    if (context) {
-      genText += `Context:\n${context}\n\n`;
+    if (context && context.trim()) {
+      genText += `Current Code Context:\n${context}\n\n`;
+      genText += `IMPORTANT: Review the existing code above. If you are modifying existing code, preserve the structure and patterns. Only change what is necessary based on the user's request.\n\n`;
     }
     
     genText += `Team Consensus:\n`;
@@ -300,25 +571,77 @@ class PolyCouncilOrchestrator {
     });
     
     genText += `Requirements:\n`;
-    genText += `- Generate complete, runnable code\n`;
-    genText += `- Follow the team's consensus on technology and architecture\n`;
+    genText += `- Based on the team's consensus, determine the appropriate file structure and organization\n`;
+    genText += `- Generate all necessary files for the project\n`;
+    genText += `- If multiple files are needed, format your response as follows:\n`;
+    genText += `  FILE: filename.ext\n`;
+    genText += `  [file content here]\n`;
+    genText += `  \n`;
+    genText += `  FILE: anotherfile.ext\n`;
+    genText += `  [file content here]\n`;
+    genText += `- If only a single file is needed, generate just that file without FILE: markers\n`;
+    genText += `- Each file should be complete and production-ready\n`;
+    genText += `- Follow the team's consensus on technology, language, and architecture\n`;
     genText += `- Include proper error handling\n`;
-    genText += `- Add meaningful comments\n`;
     genText += `- Use best practices for the chosen technology stack\n`;
-    genText += `- Return ONLY the code, no explanations outside code comments\n\n`;
+    genText += `- Return ONLY the code, no comments, no explanations\n\n`;
+    
     genText += `Code:`;
     
     return genText;
   }
 
+
+  /**
+   * Parse generated code to extract multiple files
+   */
+  parseMultipleFiles(code) {
+    const files = {};
+    const filePattern = /FILE:\s*([^\n]+)\n([\s\S]*?)(?=FILE:|$)/g;
+    let match;
+    
+    while ((match = filePattern.exec(code)) !== null) {
+      const fileName = match[1].trim();
+      const fileContent = match[2].trim();
+      if (fileName && fileContent) {
+        files[fileName] = fileContent;
+      }
+    }
+    
+    // If no FILE: markers found, treat as single file
+    if (Object.keys(files).length === 0) {
+      // Return as single file with appropriate default name based on content
+      const detectedLang = this.detectLanguage(code);
+      const defaultNames = {
+        python: 'main.py',
+        javascript: 'script.js',
+        typescript: 'script.ts',
+        java: 'Main.java',
+        cpp: 'main.cpp',
+        c: 'main.c',
+        html: 'index.html',
+        css: 'style.css'
+      };
+      const defaultName = defaultNames[detectedLang] || 'main.txt';
+      files[defaultName] = code;
+    }
+    
+    return files;
+  }
+
+
   /**
    * Edit existing code using multi-model deliberation
    */
-  async editCode(code, instruction, context = '') {
-    const prompt = `Edit the following code according to this instruction: ${instruction}\n\nCurrent code:\n${code}`;
+  async editCode(code, instruction, context = '', onProgress = null) {
+    // Include the current code as context so models can review it before editing
+    const fullContext = `Current code to edit:\n${code}\n\n${context ? `Additional context: ${context}\n` : ''}`;
+    const prompt = `Edit the code according to this instruction: ${instruction}\n\nIMPORTANT: Review the current code above carefully. Only make the changes requested. Preserve existing functionality unless explicitly asked to change it.`;
     // Detect language from existing code, but let models deliberate on the edit approach
     const detectedLang = this.detectLanguage(code);
-    return await this.generateCode(prompt, context, detectedLang);
+    // Pass existing code as existingFiles so diff can be calculated
+    const existingFiles = { 'current file': code };
+    return await this.generateCode(prompt, fullContext, detectedLang, onProgress, existingFiles);
   }
 
   /**

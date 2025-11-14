@@ -5,6 +5,7 @@ import FileExplorer from './components/FileExplorer';
 import AIPanel from './components/AIPanel';
 import StatusBar from './components/StatusBar';
 import Settings from './components/Settings';
+import DeliberationChat from './components/DeliberationChat';
 import './styles/main.css';
 
 function App() {
@@ -15,6 +16,9 @@ function App() {
   const [isConnected, setIsConnected] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [projectPath, setProjectPath] = useState(null);
+  const [deliberationMessages, setDeliberationMessages] = useState([]);
+  const [activeTab, setActiveTab] = useState('editor'); // 'editor' or 'deliberation'
+  const [fileVersions, setFileVersions] = useState({}); // Track previous versions for diff
 
   useEffect(() => {
     // Check LMStudio connection and load models
@@ -116,47 +120,131 @@ function App() {
     return language || 'javascript';
   };
 
-  const handleCodeGenerated = async (generatedCode, prompt = '') => {
-    // Detect language from prompt and generated code
-    const detectedLang = detectLanguageFromPrompt(prompt, generatedCode);
-    setLanguage(detectedLang);
-    
-    // Determine file name based on detected language
-    const getDefaultFileName = (lang) => {
-      const extensions = {
-        javascript: 'index.js',
-        typescript: 'index.ts',
-        python: 'main.py',
-        java: 'Main.java',
-        cpp: 'main.cpp',
-        c: 'main.c',
-        html: 'index.html',
-        css: 'style.css'
-      };
-      return extensions[lang] || 'generated.js';
+  const handleCodeGenerated = async (result) => {
+    // Store previous versions before updating for change tracking
+    const updateFileVersions = (fileList) => {
+      setFileVersions(prev => {
+        const newVersions = { ...prev };
+        Object.keys(fileList).forEach(fileName => {
+          if (files[fileName] !== undefined) {
+            newVersions[fileName] = files[fileName];
+          }
+        });
+        return newVersions;
+      });
     };
     
-    const fileName = activeFile || getDefaultFileName(detectedLang);
-    setFiles(prev => ({
-      ...prev,
-      [fileName]: generatedCode
-    }));
-    setActiveFile(fileName);
-    
-    // Auto-save to project folder if project is open
-    if (projectPath) {
-      try {
-        const result = await window.electronAPI.saveFile(fileName, generatedCode);
-        if (result.success) {
-          console.log(`File auto-saved to: ${result.path}`);
+    // Handle multiple files if generated
+    if (result.files && result.isMultiFile) {
+      const newFiles = {};
+      
+      // Track previous versions
+      updateFileVersions(result.files);
+      
+      // Add all generated files to state
+      Object.entries(result.files).forEach(([fileName, content]) => {
+        newFiles[fileName] = content;
+      });
+      
+      setFiles(prev => ({
+        ...prev,
+        ...newFiles
+      }));
+      
+      // Open the first file (usually index.html for websites)
+      const firstFile = Object.keys(newFiles)[0];
+      if (firstFile) {
+        const ext = firstFile.split('.').pop();
+        const langMap = {
+          'js': 'javascript',
+          'html': 'html',
+          'css': 'css',
+          'ts': 'typescript',
+          'py': 'python',
+          'java': 'java',
+          'cpp': 'cpp',
+          'c': 'c'
+        };
+        setLanguage(langMap[ext] || 'javascript');
+        setActiveFile(firstFile);
+      }
+      
+      // Auto-save all files to project folder
+      if (projectPath) {
+        try {
+          for (const [fileName, content] of Object.entries(newFiles)) {
+            const saveResult = await window.electronAPI.saveFile(fileName, content);
+            if (saveResult.success) {
+              console.log(`File auto-saved: ${fileName} -> ${saveResult.path}`);
+            }
+          }
+        } catch (error) {
+          console.error('Failed to auto-save files:', error);
         }
-      } catch (error) {
-        console.error('Failed to auto-save file:', error);
+      }
+    } else {
+      // Single file generation (backward compatibility)
+      const generatedCode = result.code || result;
+      const prompt = result.prompt || '';
+      
+      // Detect language from prompt and generated code
+      const detectedLang = detectLanguageFromPrompt(prompt, generatedCode);
+      setLanguage(detectedLang);
+      
+      // Determine file name based on detected language
+      const getDefaultFileName = (lang) => {
+        const extensions = {
+          javascript: 'index.js',
+          typescript: 'index.ts',
+          python: 'main.py',
+          java: 'Main.java',
+          cpp: 'main.cpp',
+          c: 'main.c',
+          html: 'index.html',
+          css: 'style.css'
+        };
+        return extensions[lang] || 'generated.js';
+      };
+      
+      const fileName = activeFile || getDefaultFileName(detectedLang);
+      
+      // Track previous version
+      if (files[fileName] !== undefined) {
+        setFileVersions(prev => ({
+          ...prev,
+          [fileName]: files[fileName]
+        }));
+      }
+      
+      setFiles(prev => ({
+        ...prev,
+        [fileName]: generatedCode
+      }));
+      setActiveFile(fileName);
+      
+      // Auto-save to project folder if project is open
+      if (projectPath) {
+        try {
+          const saveResult = await window.electronAPI.saveFile(fileName, generatedCode);
+          if (saveResult.success) {
+            console.log(`File auto-saved to: ${saveResult.path}`);
+          }
+        } catch (error) {
+          console.error('Failed to auto-save file:', error);
+        }
       }
     }
   };
 
   const handleEditorContentChange = (filePath, content) => {
+    // Track previous version for change highlighting
+    if (!fileVersions[filePath]) {
+      setFileVersions(prev => ({
+        ...prev,
+        [filePath]: files[filePath] || ''
+      }));
+    }
+    
     setFiles(prev => ({
       ...prev,
       [filePath]: content
@@ -167,8 +255,17 @@ function App() {
     const result = await window.electronAPI.newProject();
     if (result.success && result.path) {
       setProjectPath(result.path);
-      setFiles({});
-      setActiveFile(null);
+      // Load existing files if any
+      if (result.files && Object.keys(result.files).length > 0) {
+        setFiles(result.files);
+        const firstFile = Object.keys(result.files)[0];
+        if (firstFile) {
+          handleFileSelect(firstFile, result.files[firstFile]);
+        }
+      } else {
+        setFiles({});
+        setActiveFile(null);
+      }
     }
   };
 
@@ -245,24 +342,48 @@ function App() {
       </div>
       <div className="main-content">
         <div className="editor-container">
-          {activeFile ? (
-            <Editor
-              filePath={activeFile}
-              content={files[activeFile] || ''}
-              language={language}
-              onSave={handleFileSave}
-              onContentChange={(content) => handleEditorContentChange(activeFile, content)}
-              onRun={handleRunCode}
-            />
-          ) : (
-            <div className="welcome-screen">
-              <h1>PolyCode IDE</h1>
-              <p>AI-Powered IDE with Multi-Model Deliberation</p>
-              <p className="status">
-                {isConnected ? '✓ Connected to LMStudio' : '✗ LMStudio not connected'}
-              </p>
-              <p className="hint">Open a file or create a new one to get started</p>
+          <div className="editor-tabs-container">
+            <div className="editor-tab-bar">
+              <button
+                className={`editor-tab-button ${activeTab === 'editor' ? 'active' : ''}`}
+                onClick={() => setActiveTab('editor')}
+              >
+                📝 Editor
+              </button>
+              <button
+                className={`editor-tab-button ${activeTab === 'deliberation' ? 'active' : ''}`}
+                onClick={() => setActiveTab('deliberation')}
+              >
+                🤖 Deliberation
+              </button>
             </div>
+          </div>
+          {activeTab === 'editor' ? (
+            activeFile ? (
+              <Editor
+                filePath={activeFile}
+                content={files[activeFile] || ''}
+                previousContent={fileVersions[activeFile]}
+                language={language}
+                onSave={handleFileSave}
+                onContentChange={(content) => handleEditorContentChange(activeFile, content)}
+                onRun={handleRunCode}
+              />
+            ) : (
+              <div className="welcome-screen">
+                <h1>PolyCode IDE</h1>
+                <p>AI-Powered IDE with Multi-Model Deliberation</p>
+                <p className="status">
+                  {isConnected ? '✓ Connected to LMStudio' : '✗ LMStudio not connected'}
+                </p>
+                <p className="hint">Open a file or create a new one to get started</p>
+              </div>
+            )
+          ) : (
+            <DeliberationChat 
+              messages={deliberationMessages} 
+              isActive={activeTab === 'deliberation'}
+            />
           )}
         </div>
         <AIPanel
@@ -271,7 +392,9 @@ function App() {
           language={language}
           models={models}
           isConnected={isConnected}
+          files={files}
           onCodeGenerated={handleCodeGenerated}
+          onDeliberationUpdate={(messages) => setDeliberationMessages(messages)}
         />
       </div>
       <StatusBar

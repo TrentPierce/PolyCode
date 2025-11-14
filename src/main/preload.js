@@ -3,8 +3,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electronAPI', {
-  generateCode: (prompt, context, language) => 
-    ipcRenderer.invoke('generate-code', { prompt, context, language }),
+  generateCode: (prompt, context, language, existingFiles) => 
+    ipcRenderer.invoke('generate-code', { prompt, context, language, existingFiles }),
   
   editCode: (code, instruction, context) => 
     ipcRenderer.invoke('edit-code', { code, instruction, context }),
@@ -43,6 +43,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('save-file', filePath, content),
   
   runCode: (filePath, language, code) => 
-    ipcRenderer.invoke('run-code', filePath, language, code)
+    ipcRenderer.invoke('run-code', filePath, language, code),
+  
+  // Listen for real-time deliberation updates
+  onDeliberationUpdate: (callback) => {
+    ipcRenderer.on('deliberation-update', (event, message) => callback(message));
+  },
+  
+  // Remove deliberation update listener
+  removeDeliberationListener: () => {
+    ipcRenderer.removeAllListeners('deliberation-update');
+  }
 });
 
