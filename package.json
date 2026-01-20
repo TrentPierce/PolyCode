@@ -1,8 +1,8 @@
 {
   "name": "polycode-ide",
   "version": "1.0.0-beta",
-  "description": "AI-Powered IDE with Multi-Model Deliberation Architecture - Public Beta\n\n**Known Issue**: src/renderer/app.jsx has build errors (lines 21:0-41). This is a template issue that needs manual fixing. The application can still be built and run by using an older version or fixing the import paths.",
-  "main": "dist/main/main.js",
+  "description": "AI-Powered IDE with Multi-Model Deliberation Architecture - Public Beta",
+  "main": "src/main/main.js",
   "scripts": {
     "build:renderer": "webpack --config webpack.config.optimized.js",
     "start": "npm run build:renderer && electron .",
@@ -60,6 +60,7 @@
     "vscode-languageserver-protocol": "^3.17.5",
     "vscode-languageserver-types": "^3.17.5",
     "webpack-bundle-analyzer": "^5.1.1",
+    "winston": "^3.19.0",
     "xterm": "^5.3.0",
     "xterm-addon-fit": "^0.8.0",
     "zustand": "^4.4.7"
