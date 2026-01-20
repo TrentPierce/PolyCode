@@ -39,17 +39,30 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getProjectPath: () => 
     ipcRenderer.invoke('get-project-path'),
   
-  saveFile: (filePath, content) => 
+  saveFile: (filePath, content) =>
     ipcRenderer.invoke('save-file', filePath, content),
-  
-  runCode: (filePath, language, code) => 
+
+  runCode: (filePath, language, code) =>
     ipcRenderer.invoke('run-code', filePath, language, code),
-  
+
+  // Cache management IPC functions
+  getCacheStats: () =>
+    ipcRenderer.invoke('get-cache-stats'),
+
+  cleanCache: () =>
+    ipcRenderer.invoke('clean-cache'),
+
+  optimizeCache: (keep) =>
+    ipcRenderer.invoke('optimize-cache', keep),
+
+  clearCache: (model = null) =>
+    ipcRenderer.invoke('clear-cache', model),
+
   // Listen for real-time deliberation updates
   onDeliberationUpdate: (callback) => {
     ipcRenderer.on('deliberation-update', (event, message) => callback(message));
   },
-  
+
   // Remove deliberation update listener
   removeDeliberationListener: () => {
     ipcRenderer.removeAllListeners('deliberation-update');

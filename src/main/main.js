@@ -5,6 +5,26 @@ const os = require('os');
 const { PolyCouncilOrchestrator } = require('./core/orchestrator');
 const { LMStudioClient } = require('./core/lmstudio-client');
 const { SettingsManager } = require('./core/settings');
+const {
+  validatePrompt,
+  validateFilePath,
+  validateProjectPath,
+  validateInstruction,
+  validateCode,
+  validateModels,
+  validateIPCRequest
+} = require('./core/validation');
+const { executeInSandbox, validateCodeForExecution } = require('./core/sandbox');
+const {
+  setupGlobalHandlers,
+  handleError,
+  getUserFriendlyMessage
+} = require('./core/error-handler');
+const {
+  createRetryFunction,
+  recover
+} = require('./core/recovery');
+const { updateCacheConfig } = require('./core/cache');
 
 let mainWindow;
 let orchestrator;
@@ -25,10 +45,10 @@ function createWindow() {
 
   // Load the React app
   if (process.env.NODE_ENV === 'development') {
-    mainWindow.loadURL('http://localhost:3000');
+    mainWindow.loadFile(path.join(__dirname, '../../dist/renderer/index.html'));
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
+    mainWindow.loadFile(path.join(__dirname, '../../dist/renderer/index.html'));
   }
 
   mainWindow.on('closed', () => {
@@ -37,6 +57,9 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  // Setup global error handlers first
+  setupGlobalHandlers();
+
   // Initialize settings manager
   settingsManager = new SettingsManager();
   const settings = settingsManager.getAllSettings();
@@ -79,32 +102,99 @@ app.on('window-all-closed', () => {
 // IPC Handlers for AI operations
 ipcMain.handle('generate-code', async (event, { prompt, context, language, existingFiles }) => {
   try {
+    // Get cache settings
+    const cacheSettings = settingsManager.getSetting('cacheEnabled') !== undefined
+      ? {
+          enabled: settingsManager.getSetting('cacheEnabled'),
+          maxSize: settingsManager.getSetting('cacheMaxSize') || 100,
+          ttl: (settingsManager.getSetting('cacheTTL') || 60) * 60 * 1000
+        }
+      : { enabled: true, maxSize: 100, ttl: 3600000 };
+
+    // Validate inputs
+    const promptValidation = validatePrompt(prompt);
+    if (!promptValidation.isValid) {
+      const errorDetails = await handleError(new Error(promptValidation.errors.join(', ')), 'generate-code validation');
+      return { success: false, error: getUserFriendlyMessage(errorDetails) };
+    }
+
+    const contextValidation = validateCode(context || '');
+    if (!contextValidation.isValid) {
+      const errorDetails = await handleError(new Error(contextValidation.errors.join(', ')), 'generate-code validation');
+      return { success: false, error: getUserFriendlyMessage(errorDetails) };
+    }
+
     // Create progress callback to send real-time updates
     const onProgress = (message) => {
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('deliberation-update', message);
       }
     };
-    
-    // Pass null for language to let models decide, and progress callback
-    // Pass existingFiles to track file changes
-    const result = await orchestrator.generateCode(prompt, context, null, onProgress, existingFiles || {});
-    return { success: true, data: result };
+
+    // Use retry function for generation with cache settings
+    const generateWithRetry = createRetryFunction(
+      async () => {
+        const result = await orchestrator.generateCode(
+          promptValidation.sanitized,
+          contextValidation.sanitized,
+          null,
+          onProgress,
+          existingFiles || {},
+          cacheSettings
+        );
+        return { success: true, data: result };
+      },
+      {
+        maxAttempts: 2, // Retry once on failure
+        initialDelay: 2000,
+        shouldRetry: (error) => {
+          // Retry on network or temporary errors
+          return error.message.includes('timeout') ||
+                 error.message.includes('network') ||
+                 error.message.includes('ECONNREFUSED');
+        }
+      }
+    );
+
+    const result = await generateWithRetry();
+    return result;
   } catch (error) {
-    return { success: false, error: error.message };
+    const errorDetails = await handleError(error, 'generate-code');
+    return { success: false, error: getUserFriendlyMessage(errorDetails) };
   }
 });
 
 ipcMain.handle('edit-code', async (event, { code, instruction, context }) => {
   try {
+    // Validate inputs
+    const codeValidation = validateCode(code);
+    if (!codeValidation.isValid) {
+      return { success: false, error: `Invalid code: ${codeValidation.errors.join(', ')}` };
+    }
+
+    const instructionValidation = validateInstruction(instruction);
+    if (!instructionValidation.isValid) {
+      return { success: false, error: `Invalid instruction: ${instructionValidation.errors.join(', ')}` };
+    }
+
+    const contextValidation = validateCode(context || '');
+    if (!contextValidation.isValid) {
+      return { success: false, error: `Invalid context: ${contextValidation.errors.join(', ')}` };
+    }
+
     // Create progress callback to send real-time updates
     const onProgress = (message) => {
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('deliberation-update', message);
       }
     };
-    
-    const result = await orchestrator.editCode(code, instruction, context, onProgress);
+
+    const result = await orchestrator.editCode(
+      codeValidation.sanitized,
+      instructionValidation.sanitized,
+      contextValidation.sanitized,
+      onProgress
+    );
     return { success: true, data: result };
   } catch (error) {
     return { success: false, error: error.message };
@@ -129,14 +219,79 @@ ipcMain.handle('get-models', async () => {
   }
 });
 
-ipcMain.handle('configure-models', async (event, config) => {
-  try {
-    await orchestrator.configureModels(config);
-    return { success: true };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-});
+  ipcMain.handle('configure-models', async (event, config) => {
+    try {
+      // Validate models
+      const availableModels = await orchestrator.getAvailableModels();
+      const validation = validateModels(config.models || [], availableModels);
+
+      if (!validation.isValid) {
+        return { success: false, error: `Invalid models: ${validation.errors.join(', ')}` };
+      }
+
+      await orchestrator.configureModels({
+        ...config,
+        models: validation.sanitized
+      });
+      
+      // Update cache configuration if provided
+      if (config.cacheEnabled !== undefined) {
+        updateCacheConfig({
+          maxSize: config.cacheMaxSize || 100,
+          ttl: (config.cacheTTL || 60) * 60 * 1000 // Convert minutes to milliseconds
+        });
+      }
+      
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+
+  // Cache management IPC handlers
+  ipcMain.handle('get-cache-stats', async () => {
+    try {
+      const { getCache } = require('./core/cache');
+      const cache = getCache();
+      const stats = cache.getStats();
+      return { success: true, data: stats };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('clean-cache', async () => {
+    try {
+      const { getCache } = require('./core/cache');
+      const cache = getCache();
+      const cleaned = cache.cleanExpired();
+      return { success: true, data: { cleaned } };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('optimize-cache', async (event, keep) => {
+    try {
+      const { getCache } = require('./core/cache');
+      const cache = getCache();
+      const removed = cache.optimize(keep || 50);
+      return { success: true, data: { removed } };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('clear-cache', async (event, model = null) => {
+    try {
+      const { getCache } = require('./core/cache');
+      const cache = getCache();
+      const cleared = model ? cache.evictModel(model) : cache.clear();
+      return { success: true, data: { cleared } };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
 
 // Settings IPC Handlers
 ipcMain.handle('get-settings', async () => {
@@ -307,21 +462,40 @@ ipcMain.handle('save-project', async (event, files) => {
       if (result.canceled || result.filePaths.length === 0) {
         return { success: false, cancelled: true };
       }
-      projectPath = result.filePaths[0];
+      // Validate project path
+      const pathValidation = validateProjectPath(result.filePaths[0]);
+      if (!pathValidation.isValid) {
+        return { success: false, error: `Invalid project path: ${pathValidation.errors.join(', ')}` };
+      }
+      projectPath = pathValidation.sanitized;
     }
 
-    // Save all files to the project folder
+    // Save all files to the project folder with validation
     for (const [filePath, content] of Object.entries(files)) {
-      const fullPath = path.join(projectPath, filePath);
+      // Validate file path
+      const pathValidation = validateFilePath(filePath, projectPath);
+      if (!pathValidation.isValid) {
+        console.warn(`Skipping invalid file path: ${filePath}`);
+        continue;
+      }
+
+      // Validate code content
+      const codeValidation = validateCode(content);
+      if (!codeValidation.isValid) {
+        console.warn(`Skipping invalid code in: ${filePath}`);
+        continue;
+      }
+
+      const fullPath = path.join(projectPath, pathValidation.sanitized);
       const dir = path.dirname(fullPath);
-      
+
       // Create directory if it doesn't exist
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
-      
+
       // Write file
-      fs.writeFileSync(fullPath, content, 'utf8');
+      fs.writeFileSync(fullPath, codeValidation.sanitized, 'utf8');
     }
 
     return { success: true, path: projectPath };
@@ -340,16 +514,28 @@ ipcMain.handle('save-file', async (event, filePath, content) => {
       return { success: false, error: 'No project folder selected' };
     }
 
-    const fullPath = path.join(projectPath, filePath);
+    // Validate file path
+    const pathValidation = validateFilePath(filePath, projectPath);
+    if (!pathValidation.isValid) {
+      return { success: false, error: `Invalid file path: ${pathValidation.errors.join(', ')}` };
+    }
+
+    // Validate code content
+    const codeValidation = validateCode(content);
+    if (!codeValidation.isValid) {
+      return { success: false, error: `Invalid code: ${codeValidation.errors.join(', ')}` };
+    }
+
+    const fullPath = path.join(projectPath, pathValidation.sanitized);
     const dir = path.dirname(fullPath);
-    
+
     // Create directory if it doesn't exist
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
-    
+
     // Write file
-    fs.writeFileSync(fullPath, content, 'utf8');
+    fs.writeFileSync(fullPath, codeValidation.sanitized, 'utf8');
     return { success: true, path: fullPath };
   } catch (error) {
     return { success: false, error: error.message };
@@ -366,37 +552,71 @@ ipcMain.handle('run-code', async (event, filePath, language, code) => {
       return { success: false, error: 'No file specified to run' };
     }
 
-    const { spawn } = require('child_process');
-    
-    // Normalize the file path - handle both relative and absolute paths
+    // Validate file path
+    const pathValidation = validateFilePath(filePath, projectPath);
+    if (!pathValidation.isValid) {
+      return { success: false, error: `Invalid file path: ${pathValidation.errors.join(', ')}` };
+    }
+
+    // Validate code content
+    const codeValidation = validateCode(code);
+    if (!codeValidation.isValid) {
+      return { success: false, error: `Invalid code: ${codeValidation.errors.join(', ')}` };
+    }
+
+    // Validate code for dangerous patterns
+    const codeSafetyCheck = validateCodeForExecution(codeValidation.sanitized, language);
+    if (!codeSafetyCheck.isValid) {
+      return {
+        success: false,
+        error: `Code contains potentially dangerous patterns: ${codeSafetyCheck.warnings.join(', ')}`
+      };
+    }
+
+    // Normalize the file path
     let fullPath;
     if (path.isAbsolute(filePath)) {
-      fullPath = filePath;
+      fullPath = path.join(process.cwd(), filePath);
     } else {
-      fullPath = path.join(projectPath, filePath);
+      fullPath = path.join(projectPath, pathValidation.sanitized);
     }
-    
-    // Normalize the path to handle any path separators correctly
     fullPath = path.normalize(fullPath);
-    
-    // Ensure the file exists, create it if it doesn't
+
+    // Ensure the file exists
     if (!fs.existsSync(fullPath)) {
-      // Ensure the directory exists
       const dir = path.dirname(fullPath);
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
-      fs.writeFileSync(fullPath, code, 'utf8');
+      fs.writeFileSync(fullPath, codeValidation.sanitized, 'utf8');
     } else {
-      // File exists, update it with current code
-      fs.writeFileSync(fullPath, code, 'utf8');
+      fs.writeFileSync(fullPath, codeValidation.sanitized, 'utf8');
     }
-    
+
     // Verify it's actually a file, not a directory
     const stats = fs.statSync(fullPath);
     if (!stats.isFile()) {
       return { success: false, error: `Path is a directory, not a file: ${fullPath}` };
     }
+
+    // Execute in sandbox
+    const result = await executeInSandbox(
+      codeValidation.sanitized,
+      language,
+      {
+        timeout: 30000,
+        maxMemory: 512,
+        allowNetwork: false,
+        allowFS: true,
+        workDir: path.dirname(fullPath)
+      },
+      fullPath
+    );
+
+    return result;
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
 
     // Debug logging
     console.log('Running code:', {
@@ -477,70 +697,8 @@ ipcMain.handle('run-code', async (event, filePath, language, code) => {
       default:
         return { success: false, error: `Language ${language} is not supported for execution` };
     }
-
-    // Execute the code
-    // On Windows, we need to handle paths with spaces carefully
-    const isWindows = process.platform === 'win32';
-    const spawnOptions = {
-      cwd: projectPath
-    };
-    
-    // For Windows with paths containing spaces, use shell: false
-    // This ensures paths are passed directly to the process without shell interpretation
-    if (isWindows) {
-      spawnOptions.shell = false;
-    } else {
-      spawnOptions.shell = true;
-    }
-    
-    // Additional debug logging
-    console.log('Spawning process:', {
-      command,
-      args,
-      cwd: projectPath,
-      shell: spawnOptions.shell,
-      platform: process.platform
-    });
-    
-    const childProcess = spawn(command, args, spawnOptions);
-
-    let stdout = '';
-    let stderr = '';
-
-    childProcess.stdout.on('data', (data) => {
-      stdout += data.toString();
-    });
-
-    childProcess.stderr.on('data', (data) => {
-      stderr += data.toString();
-    });
-
-    return new Promise((resolve) => {
-      childProcess.on('close', (code) => {
-        resolve({
-          success: code === 0,
-          exitCode: code,
-          stdout,
-          stderr,
-          output: stdout || stderr
-        });
-      });
-
-      // Timeout after 30 seconds
-      setTimeout(() => {
-        childProcess.kill();
-        resolve({
-          success: false,
-          error: 'Execution timeout (30 seconds)',
-          stdout,
-          stderr
-        });
-      }, 30000);
-    });
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
 });
+
 
 // Create application menu
 function createMenu() {
