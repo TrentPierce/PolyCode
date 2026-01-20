@@ -2,7 +2,7 @@
   "id": "polycode-improvements-24",
   "seq": "24",
   "title": "Developer guide creation",
-  "status": "pending",
+  "status": "completed",
   "depends_on": [],
   "parallel": true,
   "context_files": [

@@ -1,7 +1,76 @@
 import React, { useEffect, useRef } from 'react';
 
+// ==================== REFACTORED: Helper Functions ====================
+
+/**
+ * Get color for message type
+ * Extracted as utility for consistency
+ */
+function getMessageTypeColor(type) {
+  switch (type) {
+    case 'deliberation':
+      return '#4ec9b0';
+    case 'consensus':
+      return '#dcdcaa';
+    case 'generation':
+      return '#569cd6';
+    case 'evaluation':
+      return '#ce9178';
+    case 'file':
+      return '#4ec9b0';
+    case 'file-edit':
+      return '#4ec9b0';
+    default:
+      return '#858585';
+  }
+}
+
+/**
+ * Get icon for message type
+ * Extracted as utility for consistency
+ */
+function getMessageTypeIcon(type) {
+  switch (type) {
+    case 'deliberation':
+      return '💭';
+    case 'consensus':
+      return '🤝';
+    case 'generation':
+      return '⚙️';
+    case 'evaluation':
+      return '⭐';
+    case 'file':
+      return '📄';
+    case 'file-edit':
+      return '✏️';
+    default:
+      return '💬';
+  }
+}
+
+/**
+ * Get icon for file operation
+ * Extracted as utility for consistency
+ */
+function getOperationIcon(operation) {
+  switch (operation) {
+    case 'created':
+      return '➕';
+    case 'modified':
+      return '✏️';
+    case 'deleted':
+      return '🗑️';
+    default:
+      return '📝';
+  }
+}
+
+// ==================== REFACTORED: Removed duplicate code ====================
+
 function DeliberationChat({ messages, isActive }) {
   const messagesEndRef = useRef(null);
+
+  // REFACTORED: Helper functions moved to top of file for better organization
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -11,56 +80,7 @@ function DeliberationChat({ messages, isActive }) {
     scrollToBottom();
   }, [messages]);
 
-  const getMessageTypeColor = (type) => {
-    switch (type) {
-      case 'deliberation':
-        return '#4ec9b0';
-      case 'consensus':
-        return '#dcdcaa';
-      case 'generation':
-        return '#569cd6';
-      case 'evaluation':
-        return '#ce9178';
-      case 'file':
-        return '#4ec9b0';
-      case 'file-edit':
-        return '#4ec9b0';
-      default:
-        return '#858585';
-    }
-  };
-
-  const getMessageTypeIcon = (type) => {
-    switch (type) {
-      case 'deliberation':
-        return '💭';
-      case 'consensus':
-        return '🤝';
-      case 'generation':
-        return '⚙️';
-      case 'evaluation':
-        return '⭐';
-      case 'file':
-        return '📄';
-      case 'file-edit':
-        return '✏️';
-      default:
-        return '💬';
-    }
-  };
-
-  const getOperationIcon = (operation) => {
-    switch (operation) {
-      case 'created':
-        return '➕';
-      case 'modified':
-        return '✏️';
-      case 'deleted':
-        return '🗑️';
-      default:
-        return '📝';
-    }
-  };
+  // REFACTORED: getMessageTypeColor, getMessageTypeIcon, getOperationIcon moved to helpers
 
   const renderFileDiff = (diff, fileName) => {
     if (!diff || diff.length === 0) return null;

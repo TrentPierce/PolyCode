@@ -195,6 +195,142 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('lsp-get-status', language),
 
   lspGetRunningServers: () =>
-    ipcRenderer.invoke('lsp-get-running-servers')
+    ipcRenderer.invoke('lsp-get-running-servers'),
+
+  // Logging IPC functions
+  logMessage: (level, message, context) =>
+    ipcRenderer.invoke('log-message', level, message, context),
+
+  logGetConfig: () =>
+    ipcRenderer.invoke('log-get-config'),
+
+  logSetLevel: (level) =>
+    ipcRenderer.invoke('log-set-level', level),
+
+  logGetLogs: () =>
+    ipcRenderer.invoke('log-get-logs'),
+
+  logViewFile: (filename) =>
+    ipcRenderer.invoke('log-view-file', filename),
+
+  getNodeEnv: () => process.env.NODE_ENV,
+
+  // Rubric evaluation IPC functions
+  rubricGetCriteria: () =>
+    ipcRenderer.invoke('rubric-get-criteria'),
+
+  rubricSetWeights: (weights) =>
+    ipcRenderer.invoke('rubric-set-weights', weights),
+
+  rubricGetHistory: (limit) =>
+    ipcRenderer.invoke('rubric-get-history', limit),
+
+  rubricExport: () =>
+    ipcRenderer.invoke('rubric-export'),
+
+  rubricImport: (config) =>
+    ipcRenderer.invoke('rubric-import', config),
+
+  rubricEvaluate: (code, language, options) =>
+    ipcRenderer.invoke('rubric-evaluate', code, language, options),
+
+  rubricResetWeights: () =>
+    ipcRenderer.invoke('rubric-reset-weights'),
+
+  rubricClearHistory: () =>
+    ipcRenderer.invoke('rubric-clear-history'),
+
+  rubricGetAverages: () =>
+    ipcRenderer.invoke('rubric-get-averages'),
+
+  rubricGetTrend: (windowSize) =>
+    ipcRenderer.invoke('rubric-get-trend', windowSize),
+
+  rubricClearCache: () =>
+    ipcRenderer.invoke('rubric-clear-cache'),
+
+  // Debug IPC functions
+  debugStart: (filePath, language) =>
+    ipcRenderer.invoke('debug-start', filePath, language),
+
+  debugStop: (sessionId) =>
+    ipcRenderer.invoke('debug-stop', sessionId),
+
+  debugPause: (sessionId) =>
+    ipcRenderer.invoke('debug-pause', sessionId),
+
+  debugResume: (sessionId) =>
+    ipcRenderer.invoke('debug-resume', sessionId),
+
+  debugStepOver: (sessionId) =>
+    ipcRenderer.invoke('debug-step-over', sessionId),
+
+  debugStepInto: (sessionId) =>
+    ipcRenderer.invoke('debug-step-into', sessionId),
+
+  debugStepOut: (sessionId) =>
+    ipcRenderer.invoke('debug-step-out', sessionId),
+
+  debugContinue: (sessionId) =>
+    ipcRenderer.invoke('debug-continue', sessionId),
+
+  debugSetBreakpoint: (sessionId, uri, line, condition) =>
+    ipcRenderer.invoke('debug-set-breakpoint', sessionId, uri, line, condition),
+
+  debugRemoveBreakpoint: (sessionId, uri, line) =>
+    ipcRenderer.invoke('debug-remove-breakpoint', sessionId, uri, line),
+
+  debugClearBreakpoints: (sessionId, uri) =>
+    ipcRenderer.invoke('debug-clear-breakpoints', sessionId, uri),
+
+  debugGetVariables: (sessionId, uri) =>
+    ipcRenderer.invoke('debug-get-variables', sessionId, uri),
+
+  debugGetCallstack: (sessionId) =>
+    ipcRenderer.invoke('debug-get-callstack', sessionId),
+
+  debugGetBreakpoints: (uri) =>
+    ipcRenderer.invoke('debug-get-breakpoints', uri),
+
+  debugAddWatch: (sessionId, expression) =>
+    ipcRenderer.invoke('debug-add-watch', sessionId, expression),
+
+  debugRemoveWatch: (sessionId, watchId) =>
+    ipcRenderer.invoke('debug-remove-watch', sessionId, watchId),
+
+  debugGetSession: (sessionId) =>
+    ipcRenderer.invoke('debug-get-session', sessionId),
+
+  debugGetSessions: () =>
+    ipcRenderer.invoke('debug-get-sessions'),
+
+  // Debug event listeners
+  onDebugSessionStarted: (callback) => {
+    ipcRenderer.on('debug-session-started', (event, data) => callback(data));
+  },
+
+  onDebugSessionStopped: (callback) => {
+    ipcRenderer.on('debug-session-stopped', (event, data) => callback(data));
+  },
+
+  onDebugStepCompleted: (callback) => {
+    ipcRenderer.on('debug-step-completed', (event, data) => callback(data));
+  },
+
+  onDebugBreakpointSet: (callback) => {
+    ipcRenderer.on('debug-breakpoint-set', (event, data) => callback(data));
+  },
+
+  onDebugBreakpointRemoved: (callback) => {
+    ipcRenderer.on('debug-breakpoint-removed', (event, data) => callback(data));
+  },
+
+  removeDebugListeners: () => {
+    ipcRenderer.removeAllListeners('debug-session-started');
+    ipcRenderer.removeAllListeners('debug-session-stopped');
+    ipcRenderer.removeAllListeners('debug-step-completed');
+    ipcRenderer.removeAllListeners('debug-breakpoint-set');
+    ipcRenderer.removeAllListeners('debug-breakpoint-removed');
+  }
 });
 

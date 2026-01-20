@@ -2,7 +2,7 @@
   "id": "polycode-improvements-21",
   "seq": "21",
   "title": "Logging framework",
-  "status": "pending",
+  "status": "completed",
   "depends_on": [],
   "parallel": true,
   "context_files": [

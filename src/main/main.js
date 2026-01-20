@@ -8,6 +8,7 @@ const { SettingsManager } = require('./core/settings');
 const { GitManager } = require('./core/git');
 const terminalManager = require('./core/terminal');
 const { initLSPManager, getLSPManager } = require('./core/lsp');
+const { initDebugSessionManager, getDebugSessionManager } = require('./core/debugger');
 const {
   validatePrompt,
   validateFilePath,
@@ -28,6 +29,7 @@ const {
   recover
 } = require('./core/recovery');
 const { updateCacheConfig } = require('./core/cache');
+const logger = require('./core/logger');
 
 let mainWindow;
 let orchestrator;
@@ -59,76 +61,115 @@ function createWindow() {
   mainWindow.on('close', (e) => {
     // Prevent close if not allowed (waiting for save confirmation)
     if (!allowWindowClose) {
+      logger.debug('Window close prevented, checking for unsaved changes');
       e.preventDefault();
       // Ask renderer to check for unsaved changes
       mainWindow.webContents.send('check-unsaved-changes');
+    } else {
+      logger.info('Window closing');
     }
   });
 
   mainWindow.on('closed', () => {
+    logger.info('Window closed');
     mainWindow = null;
   });
 }
 
 app.whenReady().then(async () => {
+  logger.info('Application ready', {
+    platform: process.platform,
+    arch: process.arch,
+    nodeVersion: process.versions.node,
+    electronVersion: process.versions.electron,
+    chromeVersion: process.versions.chrome
+  });
+
   // Setup global error handlers first
+  logger.debug('Setting up global error handlers');
   setupGlobalHandlers();
 
   // Initialize settings manager
+  logger.debug('Initializing settings manager');
   settingsManager = new SettingsManager();
   const settings = settingsManager.getAllSettings();
+  logger.info('Settings loaded', { settingsCount: Object.keys(settings).length });
 
   // Initialize git manager
+  logger.debug('Initializing git manager');
   gitManager = new GitManager();
 
   // Initialize LSP manager (will be configured when project is opened)
+  logger.debug('Initializing LSP manager');
   initLSPManager(null);
 
+  // Initialize debug session manager
+  logger.debug('Initializing debug session manager');
+  initDebugSessionManager(null);
+
   // Create application menu
+  logger.debug('Creating application menu');
   createMenu();
 
+  // Create main window
+  logger.debug('Creating main window');
   createWindow();
 
   // Initialize PolyCouncil orchestrator with settings
+  logger.info('Initializing PolyCouncil orchestrator', {
+    url: settings.lmstudioUrl || 'default'
+  });
   orchestrator = new PolyCouncilOrchestrator(settings.lmstudioUrl);
   try {
     // Pass selected models from settings to orchestrator
     const selectedModels = settings.selectedModels || [];
+    logger.debug('Initializing orchestrator with models', { modelCount: selectedModels.length });
     await orchestrator.initialize(selectedModels);
 
     // If models were selected, configure them
     if (selectedModels.length > 0) {
+      logger.debug('Configuring orchestrator models', { models: selectedModels });
       await orchestrator.configureModels({ models: selectedModels });
     }
 
-    console.log('PolyCouncil orchestrator initialized successfully');
+    logger.info('PolyCouncil orchestrator initialized successfully');
   } catch (error) {
-    console.error('Failed to initialize orchestrator:', error);
+    logger.error('Failed to initialize orchestrator', { error: error.message, stack: error.stack });
   }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
+      logger.info('Activating application, creating new window');
       createWindow();
     }
   });
 });
 
 app.on('window-all-closed', () => {
+  logger.info('All windows closed');
+
   // Cleanup all terminals before quitting
   terminalManager.killAll();
+  logger.debug('All terminals killed');
 
   if (process.platform !== 'darwin') {
+    logger.info('Quitting application');
     app.quit();
   }
 });
 
 app.on('before-quit', () => {
+  logger.info('Application about to quit');
+
   // Cleanup all terminals before quitting
   terminalManager.killAll();
+  logger.debug('All terminals killed on before-quit');
 });
 
 // IPC Handlers for AI operations
 ipcMain.handle('generate-code', async (event, { prompt, context, language, existingFiles }) => {
+  logger.debug('Generate code requested', { language, hasContext: !!context, filesCount: existingFiles ? Object.keys(existingFiles).length : 0 });
+
   try {
     // Get cache settings
     const cacheSettings = settingsManager.getSetting('cacheEnabled') !== undefined
@@ -139,15 +180,19 @@ ipcMain.handle('generate-code', async (event, { prompt, context, language, exist
         }
       : { enabled: true, maxSize: 100, ttl: 3600000 };
 
+    logger.debug('Cache settings loaded', { cacheEnabled: cacheSettings.enabled });
+
     // Validate inputs
     const promptValidation = validatePrompt(prompt);
     if (!promptValidation.isValid) {
+      logger.warn('Prompt validation failed', { errors: promptValidation.errors });
       const errorDetails = await handleError(new Error(promptValidation.errors.join(', ')), 'generate-code validation');
       return { success: false, error: getUserFriendlyMessage(errorDetails) };
     }
 
     const contextValidation = validateCode(context || '');
     if (!contextValidation.isValid) {
+      logger.warn('Context validation failed', { errors: contextValidation.errors });
       const errorDetails = await handleError(new Error(contextValidation.errors.join(', ')), 'generate-code validation');
       return { success: false, error: getUserFriendlyMessage(errorDetails) };
     }
@@ -185,8 +230,16 @@ ipcMain.handle('generate-code', async (event, { prompt, context, language, exist
     );
 
     const result = await generateWithRetry();
+
+    if (result.success) {
+      logger.info('Code generation completed successfully');
+    } else {
+      logger.warn('Code generation failed after retries');
+    }
+
     return result;
   } catch (error) {
+    logger.error('Generate code error', { error: error.message, stack: error.stack });
     const errorDetails = await handleError(error, 'generate-code');
     return { success: false, error: getUserFriendlyMessage(errorDetails) };
   }
@@ -315,11 +368,76 @@ ipcMain.handle('get-models', async () => {
       const { getCache } = require('./core/cache');
       const cache = getCache();
       const cleared = model ? cache.evictModel(model) : cache.clear();
+      logger.info('Cache cleared', { model, clearedCount: cleared });
       return { success: true, data: { cleared } };
     } catch (error) {
+      logger.error('Clear cache error', { error: error.message });
       return { success: false, error: error.message };
     }
   });
+
+// Logging IPC Handlers
+ipcMain.handle('log-message', async (event, level, message, context = {}) => {
+  try {
+    // Log renderer messages with context
+    if (logger[level] && typeof logger[level] === 'function') {
+      logger[level](message, {
+        ...context,
+        source: 'renderer',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    return { success: true };
+  } catch (error) {
+    logger.error('Log message error', { error: error.message });
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('log-get-config', async () => {
+  try {
+    const config = logger.getConfig();
+    logger.debug('Logger config requested', { level: config.level });
+    return { success: true, config };
+  } catch (error) {
+    logger.error('Get log config error', { error: error.message });
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('log-set-level', async (event, level) => {
+  try {
+    const result = logger.configure({ level });
+    logger.info('Log level changed', { level, previousLevel: result.level });
+    return { success: true, level: result.level };
+  } catch (error) {
+    logger.error('Set log level error', { error: error.message });
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('log-get-logs', async () => {
+  try {
+    const result = logger.getLogFiles();
+    logger.debug('Log files list requested', { fileCount: result.files?.length || 0 });
+    return result;
+  } catch (error) {
+    logger.error('Get log files error', { error: error.message });
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('log-view-file', async (event, filename) => {
+  try {
+    const result = logger.viewLogFile(filename);
+    logger.debug('Log file viewed', { filename, success: result.success });
+    return result;
+  } catch (error) {
+    logger.error('View log file error', { error: error.message });
+    return { success: false, error: error.message };
+  }
+});
 
 // Settings IPC Handlers
 ipcMain.handle('get-settings', async () => {
@@ -421,6 +539,8 @@ ipcMain.handle('new-project', async () => {
 });
 
  ipcMain.handle('open-project', async () => {
+  logger.info('Open project requested');
+
   try {
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openDirectory'],
@@ -432,6 +552,7 @@ ipcMain.handle('new-project', async () => {
 
     if (!result.canceled && result.filePaths.length > 0) {
       projectPath = result.filePaths[0];
+      logger.info('Project path selected', { projectPath });
 
       // Initialize git manager with project path
       gitManager.initialize(projectPath);
@@ -444,7 +565,7 @@ ipcMain.handle('new-project', async () => {
       const loadFiles = (dir, basePath = '') => {
         try {
           if (!fs.existsSync(dir)) {
-            console.warn(`Directory does not exist: ${dir}`);
+            logger.warn(`Directory does not exist: ${dir}`);
             return;
           }
           const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -467,57 +588,69 @@ ipcMain.handle('new-project', async () => {
               try {
                 const content = fs.readFileSync(fullPath, 'utf8');
                 files[normalizedPath] = content;
-                console.log(`Loaded file: ${normalizedPath}`);
               } catch (err) {
-                console.error(`Failed to read file ${fullPath}:`, err);
+                logger.error(`Failed to read file ${fullPath}`, { error: err.message });
               }
             }
           });
         } catch (err) {
-          console.error(`Error reading directory ${dir}:`, err);
+          logger.error(`Error reading directory ${dir}`, { error: err.message });
         }
       };
       loadFiles(projectPath);
-      console.log(`Loaded ${Object.keys(files).length} files from ${projectPath}`);
+      logger.info(`Loaded ${Object.keys(files).length} files from project`, { projectPath, fileCount: Object.keys(files).length });
       return { success: true, path: projectPath, files };
     }
+    logger.info('Open project dialog cancelled');
     return { success: false, cancelled: true };
   } catch (error) {
+    logger.error('Open project error', { error: error.message, stack: error.stack });
     return { success: false, error: error.message };
   }
 });
 
-ipcMain.handle('save-project', async (event, files) => {
+ ipcMain.handle('save-project', async (event, files) => {
+  logger.info('Save project requested', { fileCount: Object.keys(files).length, projectPath });
+
   try {
     if (!projectPath) {
+      logger.debug('No project path set, prompting user');
       const result = await dialog.showOpenDialog(mainWindow, {
         properties: ['openDirectory', 'createDirectory'],
         title: 'Select Project Folder to Save'
       });
       if (result.canceled || result.filePaths.length === 0) {
+        logger.info('Save project dialog cancelled');
         return { success: false, cancelled: true };
       }
       // Validate project path
       const pathValidation = validateProjectPath(result.filePaths[0]);
       if (!pathValidation.isValid) {
+        logger.warn('Invalid project path', { errors: pathValidation.errors });
         return { success: false, error: `Invalid project path: ${pathValidation.errors.join(', ')}` };
       }
       projectPath = pathValidation.sanitized;
+      logger.info('New project path set', { projectPath });
     }
 
     // Save all files to the project folder with validation
+    let savedCount = 0;
+    let skippedCount = 0;
+
     for (const [filePath, content] of Object.entries(files)) {
       // Validate file path
       const pathValidation = validateFilePath(filePath, projectPath);
       if (!pathValidation.isValid) {
-        console.warn(`Skipping invalid file path: ${filePath}`);
+        logger.warn(`Skipping invalid file path: ${filePath}`, { errors: pathValidation.errors });
+        skippedCount++;
         continue;
       }
 
       // Validate code content
       const codeValidation = validateCode(content);
       if (!codeValidation.isValid) {
-        console.warn(`Skipping invalid code in: ${filePath}`);
+        logger.warn(`Skipping invalid code in: ${filePath}`, { errors: codeValidation.errors });
+        skippedCount++;
         continue;
       }
 
@@ -531,10 +664,13 @@ ipcMain.handle('save-project', async (event, files) => {
 
       // Write file
       fs.writeFileSync(fullPath, codeValidation.sanitized, 'utf8');
+      savedCount++;
     }
 
+    logger.info('Project saved successfully', { savedCount, skippedCount, projectPath });
     return { success: true, path: projectPath };
   } catch (error) {
+    logger.error('Save project error', { error: error.message, stack: error.stack });
     return { success: false, error: error.message };
   }
 });
@@ -1357,6 +1493,521 @@ ipcMain.handle('lsp-get-running-servers', async () => {
   } catch (error) {
     console.error('Failed to get running LSP servers:', error);
     return { success: false, error: error.message, servers: [] };
+  }
+});
+
+// Debug IPC Handlers
+ipcMain.handle('debug-start', async (event, filePath, language) => {
+  try {
+    logger.info('Starting debug session', { filePath, language });
+
+    const debugManager = getDebugSessionManager();
+    if (!debugManager) {
+      return { success: false, error: 'Debug manager not initialized' };
+    }
+
+    const result = debugManager.startSession(filePath, language);
+
+    if (result.success) {
+      // Notify renderer about session start
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('debug-session-started', result);
+      }
+    }
+
+    return result;
+  } catch (error) {
+    logger.error('Failed to start debug session', { error: error.message });
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('debug-stop', async (event, sessionId) => {
+  try {
+    logger.info('Stopping debug session', { sessionId });
+
+    const debugManager = getDebugSessionManager();
+    if (!debugManager) {
+      return { success: false, error: 'Debug manager not initialized' };
+    }
+
+    const result = debugManager.stopSession(sessionId);
+
+    if (result.success) {
+      // Notify renderer about session stop
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('debug-session-stopped', { sessionId });
+      }
+    }
+
+    return result;
+  } catch (error) {
+    logger.error('Failed to stop debug session', { error: error.message });
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('debug-pause', async (event, sessionId) => {
+  try {
+    const debugManager = getDebugSessionManager();
+    if (!debugManager) {
+      return { success: false, error: 'Debug manager not initialized' };
+    }
+
+    const result = debugManager.pause(sessionId);
+
+    if (result.success && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('debug-session-paused', { sessionId });
+    }
+
+    return result;
+  } catch (error) {
+    logger.error('Failed to pause debug session', { error: error.message });
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('debug-resume', async (event, sessionId) => {
+  try {
+    const debugManager = getDebugSessionManager();
+    if (!debugManager) {
+      return { success: false, error: 'Debug manager not initialized' };
+    }
+
+    const result = debugManager.resume(sessionId);
+
+    if (result.success && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('debug-session-resumed', { sessionId });
+    }
+
+    return result;
+  } catch (error) {
+    logger.error('Failed to resume debug session', { error: error.message });
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('debug-step-over', async (event, sessionId) => {
+  try {
+    const debugManager = getDebugSessionManager();
+    if (!debugManager) {
+      return { success: false, error: 'Debug manager not initialized' };
+    }
+
+    const result = debugManager.stepOver(sessionId);
+
+    if (result.success && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('debug-step-completed', { sessionId, type: 'over', position: result.position });
+    }
+
+    return result;
+  } catch (error) {
+    logger.error('Failed to step over', { error: error.message });
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('debug-step-into', async (event, sessionId) => {
+  try {
+    const debugManager = getDebugSessionManager();
+    if (!debugManager) {
+      return { success: false, error: 'Debug manager not initialized' };
+    }
+
+    const result = debugManager.stepInto(sessionId);
+
+    if (result.success && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('debug-step-completed', { sessionId, type: 'into', position: result.position, callStack: result.callStack });
+    }
+
+    return result;
+  } catch (error) {
+    logger.error('Failed to step into', { error: error.message });
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('debug-step-out', async (event, sessionId) => {
+  try {
+    const debugManager = getDebugSessionManager();
+    if (!debugManager) {
+      return { success: false, error: 'Debug manager not initialized' };
+    }
+
+    const result = debugManager.stepOut(sessionId);
+
+    if (result.success && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('debug-step-completed', { sessionId, type: 'out', position: result.position, callStack: result.callStack });
+    }
+
+    return result;
+  } catch (error) {
+    logger.error('Failed to step out', { error: error.message });
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('debug-continue', async (event, sessionId) => {
+  try {
+    const debugManager = getDebugSessionManager();
+    if (!debugManager) {
+      return { success: false, error: 'Debug manager not initialized' };
+    }
+
+    const result = debugManager.continue(sessionId);
+
+    if (result.success && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('debug-continued', { sessionId });
+    }
+
+    return result;
+  } catch (error) {
+    logger.error('Failed to continue execution', { error: error.message });
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('debug-set-breakpoint', async (event, sessionId, uri, line, condition = null) => {
+  try {
+    logger.debug('Setting breakpoint', { sessionId, uri, line, condition });
+
+    const debugManager = getDebugSessionManager();
+    if (!debugManager) {
+      return { success: false, error: 'Debug manager not initialized' };
+    }
+
+    const result = debugManager.setBreakpoint(uri, line, condition);
+
+    if (result.success && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('debug-breakpoint-set', { uri, line, condition });
+    }
+
+    return result;
+  } catch (error) {
+    logger.error('Failed to set breakpoint', { error: error.message });
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('debug-remove-breakpoint', async (event, sessionId, uri, line) => {
+  try {
+    logger.debug('Removing breakpoint', { sessionId, uri, line });
+
+    const debugManager = getDebugSessionManager();
+    if (!debugManager) {
+      return { success: false, error: 'Debug manager not initialized' };
+    }
+
+    const result = debugManager.removeBreakpoint(uri, line);
+
+    if (result.success && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('debug-breakpoint-removed', { uri, line });
+    }
+
+    return result;
+  } catch (error) {
+    logger.error('Failed to remove breakpoint', { error: error.message });
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('debug-clear-breakpoints', async (event, sessionId, uri) => {
+  try {
+    logger.debug('Clearing breakpoints', { sessionId, uri });
+
+    const debugManager = getDebugSessionManager();
+    if (!debugManager) {
+      return { success: false, error: 'Debug manager not initialized' };
+    }
+
+    const result = debugManager.clearBreakpoints(uri);
+
+    if (result.success && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('debug-breakpoints-cleared', { uri });
+    }
+
+    return result;
+  } catch (error) {
+    logger.error('Failed to clear breakpoints', { error: error.message });
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('debug-get-variables', async (event, sessionId, uri) => {
+  try {
+    const debugManager = getDebugSessionManager();
+    if (!debugManager) {
+      return { success: false, error: 'Debug manager not initialized', variables: [] };
+    }
+
+    const result = debugManager.getVariables(sessionId, uri);
+    return result;
+  } catch (error) {
+    logger.error('Failed to get variables', { error: error.message });
+    return { success: false, error: error.message, variables: [] };
+  }
+});
+
+ipcMain.handle('debug-get-callstack', async (event, sessionId) => {
+  try {
+    const debugManager = getDebugSessionManager();
+    if (!debugManager) {
+      return { success: false, error: 'Debug manager not initialized', callStack: [] };
+    }
+
+    const result = debugManager.getCallStack(sessionId);
+    return result;
+  } catch (error) {
+    logger.error('Failed to get call stack', { error: error.message });
+    return { success: false, error: error.message, callStack: [] };
+  }
+});
+
+ipcMain.handle('debug-get-breakpoints', async (event, uri) => {
+  try {
+    const debugManager = getDebugSessionManager();
+    if (!debugManager) {
+      return { success: false, error: 'Debug manager not initialized', breakpoints: [] };
+    }
+
+    const breakpoints = debugManager.getBreakpoints(uri);
+    return { success: true, breakpoints };
+  } catch (error) {
+    logger.error('Failed to get breakpoints', { error: error.message });
+    return { success: false, error: error.message, breakpoints: [] };
+  }
+});
+
+ipcMain.handle('debug-add-watch', async (event, sessionId, expression) => {
+  try {
+    logger.debug('Adding watch expression', { sessionId, expression });
+
+    const debugManager = getDebugSessionManager();
+    if (!debugManager) {
+      return { success: false, error: 'Debug manager not initialized' };
+    }
+
+    const result = debugManager.addWatch(sessionId, expression);
+
+    if (result.success && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('debug-watch-added', { sessionId, ...result });
+    }
+
+    return result;
+  } catch (error) {
+    logger.error('Failed to add watch expression', { error: error.message });
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('debug-remove-watch', async (event, sessionId, watchId) => {
+  try {
+    logger.debug('Removing watch expression', { sessionId, watchId });
+
+    const debugManager = getDebugSessionManager();
+    if (!debugManager) {
+      return { success: false, error: 'Debug manager not initialized' };
+    }
+
+    const result = debugManager.removeWatch(sessionId, watchId);
+
+    if (result.success && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('debug-watch-removed', { sessionId, watchId });
+    }
+
+    return result;
+  } catch (error) {
+    logger.error('Failed to remove watch expression', { error: error.message });
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('debug-get-session', async (event, sessionId) => {
+  try {
+    const debugManager = getDebugSessionManager();
+    if (!debugManager) {
+      return { success: false, error: 'Debug manager not initialized' };
+    }
+
+    const session = debugManager.getSession(sessionId);
+    if (!session) {
+      return { success: false, error: 'Session not found' };
+    }
+
+    return { success: true, session };
+  } catch (error) {
+    logger.error('Failed to get session', { error: error.message });
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('debug-get-sessions', async () => {
+  try {
+    const debugManager = getDebugSessionManager();
+    if (!debugManager) {
+      return { success: false, error: 'Debug manager not initialized', sessions: [] };
+    }
+
+    const sessions = debugManager.getAllSessions();
+    return { success: true, sessions };
+  } catch (error) {
+    logger.error('Failed to get sessions', { error: error.message });
+    return { success: false, error: error.message, sessions: [] };
+  }
+});
+
+// Rubric Evaluation IPC Handlers
+ipcMain.handle('rubric-get-criteria', async () => {
+  try {
+    if (!orchestrator) {
+      return { success: false, error: 'Orchestrator not initialized' };
+    }
+    const criteria = orchestrator.getRubricCriteria();
+    return { success: true, criteria };
+  } catch (error) {
+    console.error('Failed to get rubric criteria:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('rubric-set-weights', async (event, weights) => {
+  try {
+    if (!orchestrator) {
+      return { success: false, error: 'Orchestrator not initialized' };
+    }
+    const result = orchestrator.setRubricWeights(weights);
+    return result;
+  } catch (error) {
+    console.error('Failed to set rubric weights:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('rubric-get-history', async (event, limit = 50) => {
+  try {
+    if (!orchestrator) {
+      return { success: false, error: 'Orchestrator not initialized' };
+    }
+    const history = orchestrator.getEvaluationHistory(limit);
+    return { success: true, history };
+  } catch (error) {
+    console.error('Failed to get evaluation history:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('rubric-export', async () => {
+  try {
+    if (!orchestrator) {
+      return { success: false, error: 'Orchestrator not initialized' };
+    }
+    const config = orchestrator.exportRubric();
+    return { success: true, config };
+  } catch (error) {
+    console.error('Failed to export rubric:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('rubric-import', async (event, config) => {
+  try {
+    if (!orchestrator) {
+      return { success: false, error: 'Orchestrator not initialized' };
+    }
+    const result = orchestrator.importRubric(config);
+    return result;
+  } catch (error) {
+    console.error('Failed to import rubric:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('rubric-evaluate', async (event, code, language, options = {}) => {
+  try {
+    if (!orchestrator) {
+      return { success: false, error: 'Orchestrator not initialized' };
+    }
+
+    // Validate code
+    const codeValidation = validateCode(code);
+    if (!codeValidation.isValid) {
+      return { success: false, error: `Invalid code: ${codeValidation.errors.join(', ')}` };
+    }
+
+    const result = await orchestrator.evaluateCode(
+      codeValidation.sanitized,
+      language,
+      options
+    );
+    return { success: true, ...result };
+  } catch (error) {
+    console.error('Failed to evaluate code:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('rubric-reset-weights', async () => {
+  try {
+    if (!orchestrator) {
+      return { success: false, error: 'Orchestrator not initialized' };
+    }
+    const result = orchestrator.resetRubricWeights();
+    return result;
+  } catch (error) {
+    console.error('Failed to reset rubric weights:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('rubric-clear-history', async () => {
+  try {
+    if (!orchestrator) {
+      return { success: false, error: 'Orchestrator not initialized' };
+    }
+    const result = orchestrator.clearEvaluationHistory();
+    return result;
+  } catch (error) {
+    console.error('Failed to clear evaluation history:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('rubric-get-averages', async () => {
+  try {
+    if (!orchestrator) {
+      return { success: false, error: 'Orchestrator not initialized' };
+    }
+    const averages = orchestrator.getAverageScores();
+    return { success: true, averages };
+  } catch (error) {
+    console.error('Failed to get average scores:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('rubric-get-trend', async (event, windowSize = 10) => {
+  try {
+    if (!orchestrator) {
+      return { success: false, error: 'Orchestrator not initialized' };
+    }
+    const trend = orchestrator.getScoreTrend(windowSize);
+    return { success: true, trend };
+  } catch (error) {
+    console.error('Failed to get score trend:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('rubric-clear-cache', async () => {
+  try {
+    if (!orchestrator) {
+      return { success: false, error: 'Orchestrator not initialized' };
+    }
+    const result = orchestrator.clearEvaluationCache();
+    return result;
+  } catch (error) {
+    console.error('Failed to clear evaluation cache:', error);
+    return { success: false, error: error.message };
   }
 });
 

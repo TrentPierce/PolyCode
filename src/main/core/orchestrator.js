@@ -1,15 +1,91 @@
 const { LMStudioClient } = require('./lmstudio-client');
-const { CodeRubric } = require('./rubric');
+const { EnhancedCodeRubric } = require('./rubric');
+const { LLMEvaluator } = require('./llm-evaluator');
+const { detectLanguage } = require('../utils/helpers');
+
+/**
+ * @typedef {Object} GenerationResult
+ * @property {string} code - Generated code
+ * @property {Object<string, string>} files - Map of filenames to file contents (for multi-file projects)
+ * @property {boolean} isMultiFile - Whether this is a multi-file project
+ * @property {string} model - The model that generated the best code
+ * @property {number} score - Quality score (0-10)
+ * @property {Array<Object>} allGenerations - All model generations with scores
+ * @property {Object} deliberation - Deliberation metadata
+ * @property {number} deliberation.rounds - Number of deliberation rounds
+ * @property {number} deliberation.totalGenerations - Total generations attempted
+ * @property {number} deliberation.totalEvaluations - Total evaluations performed
+ * @property {Array<Object>} deliberationData - Detailed deliberation messages
+ */
+
+/**
+ * @typedef {Object} DeliberationMessage
+ * @property {string} type - Message type ('deliberation', 'consensus', 'generation', 'evaluation', 'file-edit')
+ * @property {string} model - Model identifier
+ * @property {string} content - Message content
+ * @property {string} phase - Current phase (e.g., 'Deliberation Round 1', 'Consensus')
+ * @property {string} [fileName] - Filename for file-edit messages
+ * @property {string} [operation] - Operation type ('created', 'modified', 'deleted')
+ * @property {Array<Object>} [diff] - Diff information for file edits
+ */
+
+/**
+ * @typedef {Object} ModelConfig
+ * @property {Array<string>} models - List of model IDs to use
+ * @property {Array<string>} personas - List of persona names to assign
+ */
 
 /**
  * PolyCouncil-Inspired Orchestrator
- * Coordinates multiple LLMs with rubric-based scoring and weighted voting
- * WITH RESPONSE CACHING
+ *
+ * Coordinates multiple LLMs with rubric-based scoring and weighted voting.
+ * Implements a multi-model deliberation architecture where models discuss,
+ * reach consensus, generate code, and cross-evaluate each other's work.
+ *
+ * Architecture:
+ * 1. Deliberation: Models discuss the project and decide on approach (sequential)
+ * 2. Consensus: Models agree on the best approach (parallel)
+ * 3. Code Generation: Models generate code based on consensus (parallel)
+ * 4. Cross-evaluation: Models evaluate each other's code (parallel)
+ * 5. Aggregation: Scores are aggregated and best code is selected
+ *
+ * Features:
+ * - Response caching via LMStudioClient for performance
+ * - Multi-file project support
+ * - Real-time progress updates via onProgress callback
+ * - Diff tracking for code changes
+ * - Configurable model selection
+ *
+ * @example
+ * ```javascript
+ * const orchestrator = new PolyCouncilOrchestrator('http://localhost:1234');
+ * await orchestrator.initialize(['model1', 'model2']);
+ *
+ * const result = await orchestrator.generateCode(
+ *   'Create a React todo app',
+ *   'current code context',
+ *   null,
+ *   (update) => console.log(update.phase, update.content)
+ * );
+ * console.log(result.code, result.score);
+ * ```
+ *
+ * @class
  */
 class PolyCouncilOrchestrator {
+  /**
+   * Initialize the orchestrator with LMStudio connection
+   *
+   * @param {string} baseURL - Base URL for LMStudio API (default: 'http://localhost:1234')
+   * @example
+   * ```javascript
+   * const orchestrator = new PolyCouncilOrchestrator('http://localhost:1234');
+   * ```
+   */
   constructor(baseURL = 'http://localhost:1234') {
     this.lmClient = new LMStudioClient(baseURL);
-    this.rubric = new CodeRubric();
+    this.rubric = new EnhancedCodeRubric();
+    this.llmEvaluator = new LLMEvaluator(baseURL);
     this.models = [];
     this.modelConfigs = {};
     this.personas = {
@@ -21,7 +97,20 @@ class PolyCouncilOrchestrator {
   }
 
   /**
-   * Update the LMStudio URL and reinitialize
+   * Update the LMStudio URL and reinitialize the client
+   *
+   * @async
+   * @param {string} baseURL - New base URL for LMStudio API
+   * @returns {Promise<Object>} Result object with success status
+   * @returns {boolean} return.success - Whether update was successful
+   * @returns {string} [return.error] - Error message if failed
+   * @example
+   * ```javascript
+   * const result = await orchestrator.updateBaseURL('http://localhost:5678');
+   * if (result.success) {
+   *   console.log('Updated successfully');
+   * }
+   * ```
    */
   async updateBaseURL(baseURL) {
     this.lmClient = new LMStudioClient(baseURL);
@@ -699,48 +788,58 @@ class PolyCouncilOrchestrator {
   }
 
   /**
-   * Analyze code quality
+   * Analyze code quality using LLM evaluator
    */
   async analyzeCode(code, language = 'javascript') {
     if (this.models.length === 0) {
       await this.initialize();
     }
 
-    // Use ONLY configured models from settings
-    let modelsToUse = this.modelConfigs.models || [];
-    modelsToUse = modelsToUse.filter(model => this.models.includes(model));
-    
-    if (modelsToUse.length === 0) {
-      throw new Error('No models available. Please select models in Settings.');
-    }
-    
-    // Sequential analysis instead of parallel
-    const analyses = [];
-    for (const model of modelsToUse) {
-      try {
-        const analysisPrompt = `Analyze the following ${language} code for quality, correctness, and best practices:\n\n${code}\n\nProvide a detailed analysis.`;
-        const result = await this.lmClient.generateCompletion(model, analysisPrompt, {
-          temperature: 0.5,
-          max_tokens: 1000
-        });
-        analyses.push({
-          model,
-          analysis: result.text
-        });
-      } catch (error) {
-        console.error(`Analysis failed for model ${model}:`, error);
+    // Use LLM evaluator for detailed scoring
+    const evaluation = await this.llmEvaluator.evaluateCode(code, language);
+
+    // Use enhanced rubric to calculate weighted score
+    const rubricResult = this.rubric.evaluateCode(evaluation.scores, {
+      codeHash: evaluation.codeHash,
+      language
+    });
+
+    // Optional: Get qualitative analysis from models
+    let analyses = [];
+    const modelsToUse = (this.modelConfigs.models || []).filter(model => this.models.includes(model));
+
+    if (modelsToUse.length > 0) {
+      for (const model of modelsToUse) {
+        try {
+          const analysisPrompt = `Provide a brief qualitative analysis of this ${language} code. Focus on strengths and weaknesses:\n\n${code}`;
+          const result = await this.lmClient.generateCompletion(model, analysisPrompt, {
+            temperature: 0.5,
+            max_tokens: 500,
+            useCache: true
+          });
+          analyses.push({
+            model,
+            analysis: result.text
+          });
+        } catch (error) {
+          console.error(`Analysis failed for model ${model}:`, error);
+        }
       }
     }
-    
-    // Use rubric to score the code
-    const rubricScores = await this.rubric.evaluateCode(code, language, '');
-    const weightedScore = this.rubric.calculateWeightedScore(rubricScores);
+
+    // Get quality grade
+    const grade = this.rubric.getQualityGrade(rubricResult.weightedScore);
 
     return {
+      evaluation: evaluation.scores,
+      rubricScores: rubricResult.scores,
+      weightedScore: rubricResult.weightedScore,
+      grade: grade.label,
+      gradeColor: grade.color,
+      criteria: rubricResult.criteria,
       analyses,
-      rubricScores,
-      weightedScore,
-      recommendation: weightedScore >= 7 ? 'high' : weightedScore >= 5 ? 'medium' : 'low'
+      fromCache: evaluation.fromCache || false,
+      recommendation: rubricResult.weightedScore >= 7 ? 'high' : rubricResult.weightedScore >= 5 ? 'medium' : 'low'
     };
   }
 
@@ -753,14 +852,26 @@ class PolyCouncilOrchestrator {
   }
 
   /**
-   * Evaluate a code generation using rubric
+   * Evaluate a code generation using LLM evaluator
    */
   async evaluateGeneration(evaluatorModel, code, originalPrompt, language) {
     try {
       // Detect language if not provided
       const detectedLang = language || this.detectLanguage(code);
-      const scores = await this.rubric.evaluateCode(code, detectedLang, originalPrompt);
-      return this.rubric.calculateWeightedScore(scores);
+
+      // Use LLM evaluator for detailed scoring
+      const evaluation = await this.llmEvaluator.evaluateCode(code, detectedLang, {
+        prompt: originalPrompt
+      });
+
+      // Use enhanced rubric to calculate weighted score
+      const rubricResult = this.rubric.evaluateCode(evaluation.scores, {
+        codeHash: evaluation.codeHash,
+        language: detectedLang,
+        model: evaluatorModel
+      });
+
+      return rubricResult.weightedScore;
     } catch (error) {
       console.error('Evaluation failed:', error);
       return 5; // Default score
@@ -818,27 +929,102 @@ class PolyCouncilOrchestrator {
 
   /**
    * Detect programming language from code
+   * REFACTORED: Now uses shared detectLanguage utility from helpers.js
+   * This method is kept as a wrapper for backward compatibility
    */
   detectLanguage(code) {
-    const patterns = {
-      html: /(<!doctype|<html|<head|<body|<div|<script|<style)/i,
-      css: /(@media|@import|@keyframes|background:|color:|margin:|padding:)/,
-      javascript: /(function|const |let |var |=>|require\(|module\.exports)/,
-      python: /(def |import |from |print\(|if __name__)/,
-      java: /(public class|import java|@Override|System\.out)/,
-      cpp: /(#include|using namespace|std::|int main)/,
-      c: /(#include|int main|printf|malloc)/,
-      typescript: /(interface |type |: string|: number|export )/
+    // Use the shared utility to avoid code duplication
+    return detectLanguage(code);
+  }
+
+  /**
+   * Get rubric criteria configuration
+   */
+  getRubricCriteria() {
+    return this.rubric.getCriteria();
+  }
+
+  /**
+   * Set rubric weights
+   */
+  setRubricWeights(weights) {
+    return this.rubric.setWeights(weights);
+  }
+
+  /**
+   * Reset rubric weights to defaults
+   */
+  resetRubricWeights() {
+    return this.rubric.resetWeights();
+  }
+
+  /**
+   * Get evaluation history
+   */
+  getEvaluationHistory(limit = 50) {
+    return this.rubric.getHistory(limit);
+  }
+
+  /**
+   * Get average scores from history
+   */
+  getAverageScores() {
+    return this.rubric.getAverageScores();
+  }
+
+  /**
+   * Get score trend from history
+   */
+  getScoreTrend(windowSize = 10) {
+    return this.rubric.getScoreTrend(windowSize);
+  }
+
+  /**
+   * Export rubric configuration
+   */
+  exportRubric() {
+    return this.rubric.export();
+  }
+
+  /**
+   * Import rubric configuration
+   */
+  importRubric(config) {
+    return this.rubric.import(config);
+  }
+
+  /**
+   * Evaluate code using LLM and return detailed results
+   */
+  async evaluateCode(code, language = 'javascript', options = {}) {
+    const evaluation = await this.llmEvaluator.evaluateCode(code, language, options);
+    const rubricResult = this.rubric.evaluateCode(evaluation.scores, {
+      codeHash: evaluation.codeHash,
+      language
+    });
+
+    return {
+      scores: rubricResult.scores,
+      weightedScore: rubricResult.weightedScore,
+      criteria: rubricResult.criteria,
+      grade: this.rubric.getQualityGrade(rubricResult.weightedScore),
+      fromCache: evaluation.fromCache,
+      timestamp: rubricResult.timestamp
     };
+  }
 
-    // Check HTML first (most specific)
-    for (const [lang, pattern] of Object.entries(patterns)) {
-      if (pattern.test(code)) {
-        return lang;
-      }
-    }
+  /**
+   * Clear evaluation history
+   */
+  clearEvaluationHistory() {
+    return this.rubric.clearHistory();
+  }
 
-    return 'javascript'; // Default
+  /**
+   * Clear LLM evaluator cache
+   */
+  clearEvaluationCache() {
+    return this.llmEvaluator.clearCache();
   }
 }
 

@@ -1,61 +1,102 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
+import { useStore } from '../store';
 
-function AIPanel({ activeFile, code, language, models, isConnected, files = {}, onCodeGenerated, onDeliberationUpdate }) {
-  const [prompt, setPrompt] = useState('');
-  const [instruction, setInstruction] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
-  const [error, setError] = useState(null);
-  const [mode, setMode] = useState('generate'); // 'generate', 'edit', 'analyze'
-  const [deliberationMessages, setDeliberationMessages] = useState([]);
-  const [currentPhase, setCurrentPhase] = useState('');
-  const [progressPercent, setProgressPercent] = useState(0);
+/**
+ * @typedef {Object} AIPanelProps
+ * @property {string} [activeFile] - Currently active file path/name
+ * @property {string} [code] - Current code content
+ * @property {string} [language] - Programming language
+ * @property {Array<string>} [models] - Available models list
+ * @property {boolean} isConnected - Whether LMStudio is connected
+ * @property {Object<string, string>} [files] - Map of existing file contents for multi-file projects
+ * @property {Function} [onCodeGenerated] - Callback when code is generated
+ * @property {Function} [onDeliberationUpdate] - Callback for deliberation updates
+ */
+
+/**
+ * AI Panel Component
+ *
+ * Provides UI for AI-assisted code generation, editing, and analysis.
+ * Supports three modes: Generate Code, Edit Code, and Analyze Code.
+ * Integrates with the PolyCouncil orchestrator for multi-model deliberation.
+ *
+ * Features:
+ * - Multi-mode operation (generate, edit, analyze)
+ * - Real-time progress tracking with phase updates
+ * - File diff visualization
+ * - Multi-file project support
+ * - Safety mechanisms to prevent stuck loading states
+ * - Connection status indicator
+ * - Error handling and display
+ *
+ * @param {AIPanelProps} props - Component props
+ * @returns {JSX.Element} AI Panel component
+ */
+function AIPanel({ activeFile, code, language, files = {}, onCodeGenerated, onDeliberationUpdate }) {
+  // Select state from store
+  const currentPrompt = useStore(state => state.ai.currentPrompt);
+  const currentInstruction = useStore(state => state.ai.currentInstruction);
+  const loading = useStore(state => state.ai.loading);
+  const result = useStore(state => state.ai.result);
+  const error = useStore(state => state.ai.error);
+  const mode = useStore(state => state.ai.mode);
+  const deliberationMessages = useStore(state => state.ai.deliberationMessages);
+  const currentPhase = useStore(state => state.ai.currentPhase);
+  const progressPercent = useStore(state => state.ai.progressPercent);
+  const isConnected = useStore(state => state.ai.isConnected);
+
+  // Select actions from store
+  const setCurrentPrompt = useStore(state => state.setCurrentPrompt);
+  const setCurrentInstruction = useStore(state => state.setCurrentInstruction);
+  const setAiLoading = useStore(state => state.setAiLoading);
+  const setAiError = useStore(state => state.setAiError);
+  const setAiResult = useStore(state => state.setAiResult);
+  const setAiMode = useStore(state => state.setAiMode);
+  const setDeliberationMessages = useStore(state => state.setDeliberationMessages);
+  const setAiPhase = useStore(state => state.setAiPhase);
+  const setAiProgress = useStore(state => state.setAiProgress);
+
   const textareaRef = useRef(null);
 
   // Safety check: Ensure loading state doesn't get stuck
   useEffect(() => {
-    // Reset loading state if it's been stuck for more than 5 minutes (shouldn't happen, but safety net)
     if (loading) {
       const timeout = setTimeout(() => {
         console.warn('Loading state stuck for 5 minutes, resetting...');
-        setLoading(false);
-        setCurrentPhase('');
-        setProgressPercent(0);
+        setAiLoading(false);
+        setAiPhase('');
+        setAiProgress(0);
       }, 5 * 60 * 1000);
       return () => clearTimeout(timeout);
     }
-  }, [loading]);
+  }, [loading, setAiLoading, setAiPhase, setAiProgress]);
 
-  // Debug: Log state changes to help diagnose issues
+  // Debug: Log state changes
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      console.log('AIPanel state changed:', { loading, isConnected, hasPrompt: !!prompt.trim() });
+      console.log('AIPanel state changed:', { loading, isConnected, hasPrompt: !!currentPrompt.trim() });
     }
-  }, [loading, isConnected, prompt]);
+  }, [loading, isConnected, currentPrompt]);
 
   // Safety mechanism: Ensure loading state is reset if it's been false for a while
-  // This helps recover from cases where the UI gets stuck
   useEffect(() => {
     if (!loading) {
-      // If loading is false, ensure all related states are also reset
       const checkInterval = setInterval(() => {
         if (!loading && (currentPhase || progressPercent > 0)) {
           console.warn('Resetting stuck progress state');
-          setCurrentPhase('');
-          setProgressPercent(0);
+          setAiPhase('');
+          setAiProgress(0);
         }
       }, 1000);
       return () => clearInterval(checkInterval);
     }
-  }, [loading, currentPhase, progressPercent]);
+  }, [loading, currentPhase, progressPercent, setAiPhase, setAiProgress]);
 
   // Force enable textarea when loading becomes false
   useEffect(() => {
     if (!loading && textareaRef.current) {
-      // Force enable the textarea
       textareaRef.current.disabled = false;
       textareaRef.current.readOnly = false;
-      // Force a re-render by focusing and blurring
       if (document.activeElement !== textareaRef.current) {
         textareaRef.current.focus();
         setTimeout(() => {
@@ -73,7 +114,6 @@ function AIPanel({ activeFile, code, language, models, isConnected, files = {}, 
   // Listen for window events that might indicate a re-render is needed
   useEffect(() => {
     const handleWindowEvent = () => {
-      // Force enable textarea when window regains focus or is resized
       if (!loading && textareaRef.current && textareaRef.current.disabled) {
         console.warn('Window event detected, forcing textarea enable');
         textareaRef.current.disabled = false;
@@ -92,47 +132,44 @@ function AIPanel({ activeFile, code, language, models, isConnected, files = {}, 
     };
   }, [loading]);
 
-  // Note: IPC listener is set up dynamically in handleGenerate to ensure it's active during generation
-
   const handleGenerate = async () => {
-    if (!prompt.trim() || !isConnected) return;
+    if (!currentPrompt.trim() || !isConnected) return;
     if (loading) {
       console.warn('Generation already in progress, ignoring request');
       return;
     }
 
-    setLoading(true);
-    setError(null);
-    setResult(null);
-    setCurrentPhase('Initializing...');
-    setProgressPercent(0);
-    const currentPrompt = prompt; // Save prompt before clearing
+    setAiLoading(true);
+    setAiError(null);
+    setAiResult(null);
+    setAiPhase('Initializing...');
+    setAiProgress(0);
+    const prompt = currentPrompt; // Save prompt before clearing
 
     // Clear previous deliberation messages and add initial message
     const initialMessages = [{
       type: 'deliberation',
       model: 'System',
-      content: `Starting deliberation for: "${currentPrompt}"`,
+      content: `Starting deliberation for: "${prompt}"`,
       phase: 'Initialization'
     }];
     setDeliberationMessages(initialMessages);
     if (onDeliberationUpdate) {
       onDeliberationUpdate(initialMessages);
     }
-    
+
     // Set up IPC listener for this generation session
     if (window.electronAPI && window.electronAPI.onDeliberationUpdate) {
       // Remove any existing listeners first
       if (window.electronAPI.removeDeliberationListener) {
         window.electronAPI.removeDeliberationListener();
       }
-      
+
       // Set up new listener for real-time updates
       const handleUpdate = (message) => {
         // Update current phase and progress
         if (message.phase) {
-          setCurrentPhase(message.phase);
-          // Estimate progress based on phase
+          setAiPhase(message.phase);
           let progress = 0;
           if (message.phase.includes('Deliberation')) {
             progress = 25;
@@ -145,9 +182,9 @@ function AIPanel({ activeFile, code, language, models, isConnected, files = {}, 
           } else if (message.phase.includes('Complete')) {
             progress = 100;
           }
-          setProgressPercent(progress);
+          setAiProgress(progress);
         }
-        
+
         setDeliberationMessages(prev => {
           const updated = [...prev, message];
           if (onDeliberationUpdate) {
@@ -156,29 +193,23 @@ function AIPanel({ activeFile, code, language, models, isConnected, files = {}, 
           return updated;
         });
       };
-      
+
       window.electronAPI.onDeliberationUpdate(handleUpdate);
     }
 
     try {
-      // Pass current code as context so models can review it before making changes
-      // Pass null for language - let models decide during deliberation
       const currentCodeContext = code || '';
-      // Pass existing files to track changes (for multi-file projects)
       const existingFiles = files || {};
-      const response = await window.electronAPI.generateCode(currentPrompt, currentCodeContext, null, existingFiles);
+      const response = await window.electronAPI.generateCode(prompt, currentCodeContext, null, existingFiles);
       if (response.success) {
         const resultData = response.data;
-        
-        // Build updated messages with deliberation data
+
         let updatedMessages = [...initialMessages];
-        
-        // Add deliberation messages from result
+
         if (resultData.deliberationData) {
           updatedMessages = [...updatedMessages, ...resultData.deliberationData];
         }
-        
-        // Add final result message
+
         if (resultData.files && resultData.isMultiFile) {
           updatedMessages.push({
             type: 'file',
@@ -195,13 +226,13 @@ function AIPanel({ activeFile, code, language, models, isConnected, files = {}, 
             phase: 'Complete'
           });
         }
-        
+
         setDeliberationMessages(updatedMessages);
         if (onDeliberationUpdate) {
           onDeliberationUpdate(updatedMessages);
         }
-        
-        setResult({
+
+        setAiResult({
           type: 'generation',
           code: resultData.code,
           files: resultData.files,
@@ -210,36 +241,36 @@ function AIPanel({ activeFile, code, language, models, isConnected, files = {}, 
           score: resultData.score,
           deliberation: resultData.deliberation
         });
-        // Pass full result to handler for multi-file support
+
         if (onCodeGenerated) {
           onCodeGenerated(resultData);
         }
-        // Clear prompt after successful generation so user can type new request
-        setPrompt('');
+
+        // Clear prompt after successful generation
+        setCurrentPrompt('');
       } else {
-        setError(response.error || 'Generation failed');
-        setLoading(false);
+        setAiError(response.error || 'Generation failed');
+        setAiLoading(false);
       }
     } catch (err) {
-      setError(err.message || 'An error occurred');
-      setLoading(false);
+      setAiError(err.message || 'An error occurred');
+      setAiLoading(false);
     } finally {
-      // Always reset loading state
-      setLoading(false);
-      setCurrentPhase('');
-      setProgressPercent(0);
+      setAiLoading(false);
+      setAiPhase('');
+      setAiProgress(0);
     }
   };
 
   const handleEdit = async () => {
-    if (!instruction.trim() || !code || !isConnected || loading) return;
+    if (!currentInstruction.trim() || !code || !isConnected || loading) return;
 
-    setLoading(true);
-    setError(null);
-    setResult(null);
-    setCurrentPhase('Initializing edit...');
-    setProgressPercent(0);
-    const currentInstruction = instruction; // Save instruction before clearing
+    setAiLoading(true);
+    setAiError(null);
+    setAiResult(null);
+    setAiPhase('Initializing edit...');
+    setAiProgress(0);
+    const instruction = currentInstruction; // Save instruction before clearing
 
     // Set up IPC listener for this edit session
     if (window.electronAPI && window.electronAPI.onDeliberationUpdate) {
@@ -247,13 +278,11 @@ function AIPanel({ activeFile, code, language, models, isConnected, files = {}, 
       if (window.electronAPI.removeDeliberationListener) {
         window.electronAPI.removeDeliberationListener();
       }
-      
+
       // Set up new listener for real-time updates
       const handleUpdate = (message) => {
-        // Update current phase and progress
         if (message.phase) {
-          setCurrentPhase(message.phase);
-          // Estimate progress based on phase
+          setAiPhase(message.phase);
           let progress = 0;
           if (message.phase.includes('Deliberation')) {
             progress = 25;
@@ -266,59 +295,56 @@ function AIPanel({ activeFile, code, language, models, isConnected, files = {}, 
           } else if (message.phase.includes('Complete')) {
             progress = 100;
           }
-          setProgressPercent(progress);
+          setAiProgress(progress);
         }
       };
-      
+
       window.electronAPI.onDeliberationUpdate(handleUpdate);
     }
 
     try {
-      const response = await window.electronAPI.editCode(code, currentInstruction, '');
+      const response = await window.electronAPI.editCode(code, instruction, '');
       if (response.success) {
         const editedCode = response.data.code;
-        setResult({
+        setAiResult({
           type: 'edit',
           code: editedCode,
           model: response.data.model,
           score: response.data.score
         });
-        // Insert edited code into editor if callback provided
         if (onCodeGenerated) {
-          onCodeGenerated(editedCode, currentInstruction);
+          onCodeGenerated(editedCode, instruction);
         }
-        // Clear instruction after successful edit so user can type new request
-        setInstruction('');
+        setCurrentInstruction('');
       } else {
-        setError(response.error || 'Edit failed');
-        setLoading(false);
-        setCurrentPhase('');
-        setProgressPercent(0);
+        setAiError(response.error || 'Edit failed');
+        setAiLoading(false);
+        setAiPhase('');
+        setAiProgress(0);
       }
     } catch (err) {
-      setError(err.message || 'An error occurred');
-      setLoading(false);
-      setCurrentPhase('');
-      setProgressPercent(0);
+      setAiError(err.message || 'An error occurred');
+      setAiLoading(false);
+      setAiPhase('');
+      setAiProgress(0);
     } finally {
-      // Always reset loading state
-      setLoading(false);
-      setCurrentPhase('');
-      setProgressPercent(0);
+      setAiLoading(false);
+      setAiPhase('');
+      setAiProgress(0);
     }
   };
 
   const handleAnalyze = async () => {
     if (!code || !isConnected) return;
 
-    setLoading(true);
-    setError(null);
-    setResult(null);
+    setAiLoading(true);
+    setAiError(null);
+    setAiResult(null);
 
     try {
       const response = await window.electronAPI.analyzeCode(code, language);
       if (response.success) {
-        setResult({
+        setAiResult({
           type: 'analysis',
           analyses: response.data.analyses,
           rubricScores: response.data.rubricScores,
@@ -326,20 +352,12 @@ function AIPanel({ activeFile, code, language, models, isConnected, files = {}, 
           recommendation: response.data.recommendation
         });
       } else {
-        setError(response.error || 'Analysis failed');
+        setAiError(response.error || 'Analysis failed');
       }
     } catch (err) {
-      setError(err.message || 'An error occurred');
+      setAiError(err.message || 'An error occurred');
     } finally {
-      setLoading(false);
-    }
-  };
-
-  const applyResult = () => {
-    if (result && result.code) {
-      // This would typically update the editor content
-      // For now, we'll just show it - integration with editor would be next step
-      alert('Code generated! Check the result below. Integration with editor coming soon.');
+      setAiLoading(false);
     }
   };
 
@@ -355,7 +373,7 @@ function AIPanel({ activeFile, code, language, models, isConnected, files = {}, 
       <div className="ai-panel-content" style={{ overflowY: 'auto', flex: 1 }}>
         <div className="ai-input-group">
           <label>Mode</label>
-          <select value={mode} onChange={(e) => setMode(e.target.value)}>
+          <select value={mode} onChange={(e) => setAiMode(e.target.value)}>
             <option value="generate">Generate Code</option>
             <option value="edit">Edit Code</option>
             <option value="analyze">Analyze Code</option>
@@ -368,44 +386,14 @@ function AIPanel({ activeFile, code, language, models, isConnected, files = {}, 
               <label>Prompt</label>
               <textarea
                 ref={textareaRef}
-                value={prompt}
+                value={currentPrompt}
                 onChange={(e) => {
-                  // Always allow onChange - don't block it based on loading state
-                  setPrompt(e.target.value);
+                  setCurrentPrompt(e.target.value);
                 }}
                 placeholder="Describe what code you want to generate..."
                 disabled={loading}
                 readOnly={false}
-                onFocus={(e) => {
-                  // Debug: Log focus event
-                  if (process.env.NODE_ENV === 'development') {
-                    console.log('Textarea focused, loading:', loading, 'isConnected:', isConnected, 'disabled:', e.target.disabled);
-                  }
-                  // Force enable if loading is false but somehow disabled
-                  if (!loading && e.target.disabled) {
-                    console.warn('Textarea is disabled but loading is false, forcing enable');
-                    e.target.disabled = false;
-                    e.target.readOnly = false;
-                  }
-                }}
-                onBlur={(e) => {
-                  if (process.env.NODE_ENV === 'development') {
-                    console.log('Textarea blurred');
-                  }
-                }}
-                onKeyDown={(e) => {
-                  // Debug: Log key events to see if input is being blocked
-                  if (process.env.NODE_ENV === 'development' && e.key.length === 1) {
-                    console.log('Key pressed in textarea:', e.key, 'loading:', loading, 'disabled:', e.currentTarget.disabled);
-                  }
-                  // Force enable on key press if somehow disabled
-                  if (!loading && e.currentTarget.disabled) {
-                    console.warn('Textarea disabled on keypress but loading is false, forcing enable');
-                    e.currentTarget.disabled = false;
-                    e.currentTarget.readOnly = false;
-                  }
-                }}
-                style={{ 
+                style={{
                   cursor: loading ? 'not-allowed' : 'text',
                   opacity: loading ? 0.6 : 1,
                   backgroundColor: loading ? '#1a1a1a' : '#1e1e1e'
@@ -415,22 +403,16 @@ function AIPanel({ activeFile, code, language, models, isConnected, files = {}, 
             <button
               className="ai-button"
               onClick={handleGenerate}
-              disabled={!prompt.trim() || loading || !isConnected}
-              title={!isConnected ? 'Please connect to LMStudio first (check Settings)' : !prompt.trim() ? 'Enter a prompt' : loading ? 'Generating...' : 'Generate Code'}
-              onMouseEnter={() => {
-                // Debug: Log state when hovering over button
-                if (process.env.NODE_ENV === 'development') {
-                  console.log('AIPanel state:', { loading, isConnected, hasPrompt: !!prompt.trim() });
-                }
-              }}
+              disabled={!currentPrompt.trim() || loading || !isConnected}
+              title={!isConnected ? 'Please connect to LMStudio first (check Settings)' : !currentPrompt.trim() ? 'Enter a prompt' : loading ? 'Generating...' : 'Generate Code'}
             >
               {loading ? 'Generating...' : !isConnected ? 'Not Connected' : 'Generate Code'}
             </button>
             {loading && mode === 'generate' && (
               <div style={{ marginTop: '0.75rem' }}>
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
                   gap: '0.5rem',
                   marginBottom: '0.5rem',
                   fontSize: '0.85rem',
@@ -461,14 +443,6 @@ function AIPanel({ activeFile, code, language, models, isConnected, files = {}, 
                     borderRadius: '2px'
                   }}></div>
                 </div>
-                <div style={{ 
-                  fontSize: '0.7rem', 
-                  color: '#666', 
-                  marginTop: '0.25rem',
-                  textAlign: 'center'
-                }}>
-                  This may take several minutes on slower systems...
-                </div>
               </div>
             )}
           </>
@@ -479,11 +453,11 @@ function AIPanel({ activeFile, code, language, models, isConnected, files = {}, 
             <div className="ai-input-group">
               <label>Edit Instruction</label>
               <textarea
-                value={instruction}
-                onChange={(e) => setInstruction(e.target.value)}
+                value={currentInstruction}
+                onChange={(e) => setCurrentInstruction(e.target.value)}
                 placeholder="Describe how to edit the code..."
                 disabled={!isConnected || !activeFile || loading}
-                style={{ 
+                style={{
                   cursor: (!isConnected || !activeFile || loading) ? 'not-allowed' : 'text',
                   opacity: (!isConnected || !activeFile || loading) ? 0.6 : 1
                 }}
@@ -492,15 +466,15 @@ function AIPanel({ activeFile, code, language, models, isConnected, files = {}, 
             <button
               className="ai-button"
               onClick={handleEdit}
-              disabled={!instruction.trim() || loading || !isConnected || !activeFile}
+              disabled={!currentInstruction.trim() || loading || !isConnected || !activeFile}
             >
               {loading ? 'Editing...' : 'Edit Code'}
             </button>
             {loading && mode === 'edit' && (
               <div style={{ marginTop: '0.75rem' }}>
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
                   gap: '0.5rem',
                   marginBottom: '0.5rem',
                   fontSize: '0.85rem',
@@ -531,14 +505,6 @@ function AIPanel({ activeFile, code, language, models, isConnected, files = {}, 
                     borderRadius: '2px'
                   }}></div>
                 </div>
-                <div style={{ 
-                  fontSize: '0.7rem', 
-                  color: '#666', 
-                  marginTop: '0.25rem',
-                  textAlign: 'center'
-                }}>
-                  This may take several minutes on slower systems...
-                </div>
               </div>
             )}
           </>
@@ -568,9 +534,6 @@ function AIPanel({ activeFile, code, language, models, isConnected, files = {}, 
             <div style={{ fontSize: '0.75rem', marginTop: '0.5rem', color: '#858585' }}>
               Phase 1: Deliberation → Phase 2: Consensus → Phase 3: Code Generation → Phase 4: Evaluation
             </div>
-            <div style={{ fontSize: '0.7rem', marginTop: '0.5rem', color: '#666' }}>
-              This may take a moment as models collaborate...
-            </div>
           </div>
         )}
 
@@ -595,7 +558,7 @@ function AIPanel({ activeFile, code, language, models, isConnected, files = {}, 
               )}
             </div>
 
-                {result.code && (
+            {result.code && (
               <>
                 <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#4ec9b0', marginBottom: '0.5rem' }}>
                   {result.isMultiFile && result.files ? (
@@ -612,11 +575,6 @@ function AIPanel({ activeFile, code, language, models, isConnected, files = {}, 
                 {result.score !== undefined && (
                   <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#858585' }}>
                     Quality Score: {result.score.toFixed(2)}/10
-                  </div>
-                )}
-                {result.deliberation && (
-                  <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#858585' }}>
-                    {result.deliberation.rounds || 0} deliberation rounds, {result.deliberation.totalGenerations} generations, {result.deliberation.totalEvaluations} evaluations
                   </div>
                 )}
               </>
@@ -673,4 +631,3 @@ function AIPanel({ activeFile, code, language, models, isConnected, files = {}, 
 }
 
 export default AIPanel;
-

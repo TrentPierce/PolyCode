@@ -2,7 +2,9 @@
   "id": "polycode-improvements-20",
   "seq": "20",
   "title": "Dependency upgrades",
-  "status": "pending",
+  "status": "in_progress",
+  "agent_id": "coder-agent",
+  "started_at": "2026-01-20T00:00:00Z",
   "depends_on": [],
   "parallel": true,
   "context_files": [

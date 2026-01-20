@@ -7,7 +7,9 @@ function StatusBar({
   onSettingsClick,
   isDirty,
   lastSaved,
-  lspStatus
+  lspStatus,
+  onQualityMetricsClick,
+  onRubricEditorClick
 }) {
   const formatLastSaved = (timestamp) => {
     if (!timestamp) return 'Not saved';
@@ -71,7 +73,47 @@ function StatusBar({
           </span>
         </div>
       )}
-      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        {onQualityMetricsClick && (
+          <button
+            onClick={onQualityMetricsClick}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'white',
+              cursor: 'pointer',
+              fontSize: '0.75rem',
+              padding: '0.25rem 0.5rem',
+              borderRadius: '3px',
+              opacity: 0.8
+            }}
+            onMouseEnter={(e) => (e.target.style.opacity = '1')}
+            onMouseLeave={(e) => (e.target.style.opacity = '0.8')}
+            title="Quality Metrics"
+          >
+            📊 Metrics
+          </button>
+        )}
+        {onRubricEditorClick && (
+          <button
+            onClick={onRubricEditorClick}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'white',
+              cursor: 'pointer',
+              fontSize: '0.75rem',
+              padding: '0.25rem 0.5rem',
+              borderRadius: '3px',
+              opacity: 0.8
+            }}
+            onMouseEnter={(e) => (e.target.style.opacity = '1')}
+            onMouseLeave={(e) => (e.target.style.opacity = '0.8')}
+            title="Rubric Editor"
+          >
+            📝 Rubric
+          </button>
+        )}
         <button
           onClick={onSettingsClick}
           style={{

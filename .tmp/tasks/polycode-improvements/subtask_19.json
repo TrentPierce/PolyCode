@@ -2,7 +2,7 @@
   "id": "polycode-improvements-19",
   "seq": "19",
   "title": "Code deduplication",
-  "status": "pending",
+  "status": "completed",
   "depends_on": ["16"],
   "parallel": false,
   "context_files": [

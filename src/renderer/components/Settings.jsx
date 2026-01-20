@@ -1,40 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
+import { useStore } from '../store';
 
 function Settings({ isOpen, onClose }) {
-  const [settings, setSettings] = useState({
-    lmstudioUrl: 'http://localhost:1234',
-    selectedModels: []
-  });
-  const [availableModels, setAvailableModels] = useState([]);
-  const [loadingModels, setLoadingModels] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [testResult, setTestResult] = useState(null);
-  const [error, setError] = useState(null);
+  // Select state from store
+  const settings = useStore(state => state.settings);
+  const showSettings = useStore(state => state.ui.showSettings);
+
+  // Select actions from store
+  const setLmstudioUrl = useStore(state => state.setLmstudioUrl);
+  const setSelectedModels = useStore(state => state.setSelectedModels);
+
+  // Local component state
+  const [availableModels, setAvailableModels] = React.useState([]);
+  const [loadingModels, setLoadingModels] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const [testResult, setTestResult] = React.useState(null);
+  const [error, setError] = React.useState(null);
 
   useEffect(() => {
     if (isOpen) {
-      loadSettings();
       loadAvailableModels();
     }
   }, [isOpen]);
-
-  const loadSettings = async () => {
-    try {
-      const result = await window.electronAPI.getSettings();
-      if (result.success) {
-        setSettings({
-          lmstudioUrl: result.data.lmstudioUrl || 'http://localhost:1234',
-          selectedModels: result.data.selectedModels || []
-        });
-        setError(null);
-      } else {
-        setError('Failed to load settings');
-      }
-    } catch (err) {
-      setError(err.message);
-    }
-  };
 
   const loadAvailableModels = async () => {
     setLoadingModels(true);
@@ -55,7 +42,7 @@ function Settings({ isOpen, onClose }) {
     const newSelected = currentSelected.includes(modelId)
       ? currentSelected.filter(id => id !== modelId)
       : [...currentSelected, modelId];
-    setSettings({ ...settings, selectedModels: newSelected });
+    setSelectedModels(newSelected);
   };
 
   const handleSave = async () => {
@@ -90,7 +77,7 @@ function Settings({ isOpen, onClose }) {
   };
 
   const handleTest = async () => {
-    setLoading(true);
+    const loading = true;
     setError(null);
     setTestResult(null);
 
@@ -100,7 +87,7 @@ function Settings({ isOpen, onClose }) {
         new URL(settings.lmstudioUrl);
       } catch {
         setError('Invalid URL format. Please use format: http://hostname:port');
-        setLoading(false);
+        setLoadingModels(false);
         return;
       }
 
@@ -117,7 +104,7 @@ function Settings({ isOpen, onClose }) {
     } catch (err) {
       setError(err.message);
     } finally {
-      setLoading(false);
+      setLoadingModels(false);
     }
   };
 
@@ -134,14 +121,14 @@ function Settings({ isOpen, onClose }) {
         <div className="settings-content">
           <div className="settings-section">
             <h3>LMStudio Configuration</h3>
-            
+
             <div className="settings-field">
               <label htmlFor="lmstudio-url">LMStudio API URL</label>
               <input
                 id="lmstudio-url"
                 type="text"
                 value={settings.lmstudioUrl}
-                onChange={(e) => setSettings({ ...settings, lmstudioUrl: e.target.value })}
+                onChange={(e) => setLmstudioUrl(e.target.value)}
                 placeholder="http://localhost:1234"
                 disabled={saving}
               />
@@ -154,14 +141,14 @@ function Settings({ isOpen, onClose }) {
               <button
                 className="settings-button secondary"
                 onClick={handleTest}
-                disabled={loading || saving}
+                disabled={loadingModels || saving}
               >
-                {loading ? 'Testing...' : 'Test Connection'}
+                {loadingModels ? 'Testing...' : 'Test Connection'}
               </button>
               <button
                 className="settings-button primary"
                 onClick={handleSave}
-                disabled={saving || loading}
+                disabled={saving || loadingModels}
               >
                 {saving ? 'Saving...' : 'Save Settings'}
               </button>
@@ -182,7 +169,7 @@ function Settings({ isOpen, onClose }) {
 
           <div className="settings-section">
             <h3>Model Selection</h3>
-            
+
             {loadingModels ? (
               <div className="settings-message" style={{ color: '#858585' }}>
                 Loading available models...
@@ -222,4 +209,3 @@ function Settings({ isOpen, onClose }) {
 }
 
 export default Settings;
-

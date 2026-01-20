@@ -2,7 +2,7 @@
   "id": "polycode-improvements-15",
   "seq": "15",
   "title": "Debugging capabilities",
-  "status": "pending",
+  "status": "completed",
   "depends_on": ["14"],
   "parallel": false,
   "context_files": [

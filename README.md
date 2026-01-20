@@ -14,6 +14,8 @@ Inspired by PolyCouncil's proven multi-model deliberation system, PolyCode IDE i
 - **AI Code Editing**: Edit existing code with natural language instructions
 - **Code Analysis**: Analyze code quality using multi-model evaluation
 
+👨‍💻 **Developers**: Check out our comprehensive [Developer Guide](docs/DEVELOPER_GUIDE.md) to start contributing!
+
 ## Architecture
 
 ### Core Components
@@ -132,9 +134,71 @@ You can configure which models and personas to use by modifying the orchestrator
 
 Edit `src/main/core/rubric.js` to customize evaluation criteria and weights.
 
-## Development
+## For Developers
 
-### Running in Development Mode
+PolyCode IDE is built with Electron, React, and TypeScript. We welcome contributions from developers!
+
+### Documentation
+
+- **[Developer Guide](docs/DEVELOPER_GUIDE.md)** - Comprehensive guide for developers
+  - Quick start for new developers
+  - Project structure overview
+  - Architecture overview
+  - Development environment setup
+  - Common development tasks
+  - Debugging guide
+
+- **[Setup Guide](docs/SETUP.md)** - Setup and installation instructions
+  - Prerequisites (Node.js, LMStudio, etc.)
+  - Installation steps
+  - Configuration steps
+  - First-time setup
+  - Platform-specific notes
+  - Troubleshooting common issues
+
+- **[Contributing Guide](docs/CONTRIBUTING.md)** - Contribution guidelines
+  - How to contribute (bug reports, features, PRs)
+  - Code review process
+  - Commit message conventions
+  - Branch naming conventions
+  - Coding standards
+  - Testing requirements
+
+- **[Code Style Guide](docs/CODE_STYLE.md)** - Code style and formatting
+  - Naming conventions
+  - Code formatting rules
+  - React/JSX conventions
+  - JavaScript/TypeScript conventions
+  - Comments and documentation
+  - Best practices
+
+- **[Testing Guide](docs/TESTING.md)** - Testing instructions
+  - How to run tests
+  - Writing unit, integration, and E2E tests
+  - Test organization
+  - Test coverage requirements
+  - Debugging tests
+
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - Build and deployment
+  - Build commands
+  - Platform-specific builds
+  - Electron packaging
+  - Distribution formats
+  - Signing configuration
+  - Release process
+
+### Additional Documentation
+
+- **[Architecture Documentation](ARCHITECTURE.md)** - Technical deep dive into system architecture
+- **[Project Summary](PROJECT_SUMMARY.md)** - Project overview and completed features
+- **[Quick Start Guide](QUICKSTART.md)** - Quick start for users
+- **[LSP Setup](docs/lsp-setup.md)** - Language Server Protocol setup
+- **[TypeScript Migration](docs/typescript-migration.md)** - TypeScript migration notes
+- **[Keyboard Shortcuts](docs/shortcuts.md)** - Available keyboard shortcuts
+
+### Development
+
+#### Running in Development Mode
 
 ```bash
 npm run dev
@@ -142,7 +206,7 @@ npm run dev
 
 This will start the app with developer tools enabled.
 
-### Building for Production
+#### Building for Production
 
 ```bash
 npm run build
@@ -153,6 +217,14 @@ Platform-specific builds:
 npm run build:win    # Windows
 npm run build:mac    # macOS
 npm run build:linux  # Linux
+```
+
+#### Running Tests
+
+```bash
+npm test                    # Run all tests
+npm run test:watch          # Run tests in watch mode
+npm run test:coverage       # Run tests with coverage report
 ```
 
 ## Future Enhancements

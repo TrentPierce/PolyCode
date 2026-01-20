@@ -2,7 +2,7 @@
   "id": "polycode-improvements-23",
   "seq": "23",
   "title": "Inline documentation improvement",
-  "status": "pending",
+  "status": "completed",
   "depends_on": ["16"],
   "parallel": false,
   "context_files": [
