@@ -30,6 +30,7 @@ let mainWindow;
 let orchestrator;
 let settingsManager;
 let projectPath = null; // Current project folder path
+let allowWindowClose = false; // Flag to allow window close after confirmation
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -50,6 +51,15 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.join(__dirname, '../../dist/renderer/index.html'));
   }
+
+  mainWindow.on('close', (e) => {
+    // Prevent close if not allowed (waiting for save confirmation)
+    if (!allowWindowClose) {
+      e.preventDefault();
+      // Ask renderer to check for unsaved changes
+      mainWindow.webContents.send('check-unsaved-changes');
+    }
+  });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -508,39 +518,186 @@ ipcMain.handle('get-project-path', async () => {
   return { success: true, path: projectPath };
 });
 
-ipcMain.handle('save-file', async (event, filePath, content) => {
-  try {
-    if (!projectPath) {
-      return { success: false, error: 'No project folder selected' };
+  ipcMain.handle('save-file', async (event, filePath, content) => {
+    try {
+      if (!projectPath) {
+        return { success: false, error: 'No project folder selected' };
+      }
+
+      // Validate file path
+      const pathValidation = validateFilePath(filePath, projectPath);
+      if (!pathValidation.isValid) {
+        return { success: false, error: `Invalid file path: ${pathValidation.errors.join(', ')}` };
+      }
+
+      // Validate code content
+      const codeValidation = validateCode(content);
+      if (!codeValidation.isValid) {
+        return { success: false, error: `Invalid code: ${codeValidation.errors.join(', ')}` };
+      }
+
+      const fullPath = path.join(projectPath, pathValidation.sanitized);
+      const dir = path.dirname(fullPath);
+
+      // Create directory if it doesn't exist
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+
+      // Write file
+      fs.writeFileSync(fullPath, codeValidation.sanitized, 'utf8');
+      return { success: true, path: fullPath };
+    } catch (error) {
+      return { success: false, error: error.message };
     }
+  });
 
-    // Validate file path
-    const pathValidation = validateFilePath(filePath, projectPath);
-    if (!pathValidation.isValid) {
-      return { success: false, error: `Invalid file path: ${pathValidation.errors.join(', ')}` };
+  // File operation IPC handlers
+  ipcMain.handle('rename-file', async (event, filePath, newPath) => {
+    try {
+      if (!projectPath) {
+        return { success: false, error: 'No project folder selected' };
+      }
+
+      const oldFullPath = path.join(projectPath, filePath);
+      const newFullPath = path.join(projectPath, newPath);
+
+      // Check if source exists
+      if (!fs.existsSync(oldFullPath)) {
+        return { success: false, error: 'File not found' };
+      }
+
+      // Check if destination already exists
+      if (fs.existsSync(newFullPath)) {
+        return { success: false, error: 'Destination file already exists' };
+      }
+
+      // Ensure destination directory exists
+      const newDir = path.dirname(newFullPath);
+      if (!fs.existsSync(newDir)) {
+        fs.mkdirSync(newDir, { recursive: true });
+      }
+
+      // Rename/move the file
+      fs.renameSync(oldFullPath, newFullPath);
+
+      return { success: true, newPath: newFullPath };
+    } catch (error) {
+      return { success: false, error: error.message };
     }
+  });
 
-    // Validate code content
-    const codeValidation = validateCode(content);
-    if (!codeValidation.isValid) {
-      return { success: false, error: `Invalid code: ${codeValidation.errors.join(', ')}` };
+  ipcMain.handle('delete-file', async (event, filePath) => {
+    try {
+      if (!projectPath) {
+        return { success: false, error: 'No project folder selected' };
+      }
+
+      const fullPath = path.join(projectPath, filePath);
+
+      // Check if file exists
+      if (!fs.existsSync(fullPath)) {
+        return { success: false, error: 'File not found' };
+      }
+
+      // Delete file or directory (recursively for directories)
+      const stats = fs.statSync(fullPath);
+      if (stats.isDirectory()) {
+        fs.rmSync(fullPath, { recursive: true, force: true });
+      } else {
+        fs.unlinkSync(fullPath);
+      }
+
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
     }
+  });
 
-    const fullPath = path.join(projectPath, pathValidation.sanitized);
-    const dir = path.dirname(fullPath);
+  ipcMain.handle('create-folder', async (event, folderName, parentPath) => {
+    try {
+      if (!projectPath) {
+        return { success: false, error: 'No project folder selected' };
+      }
 
-    // Create directory if it doesn't exist
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+      const fullPath = parentPath
+        ? path.join(projectPath, parentPath, folderName)
+        : path.join(projectPath, folderName);
+
+      // Check if folder already exists
+      if (fs.existsSync(fullPath)) {
+        return { success: false, error: 'Folder already exists' };
+      }
+
+      // Create folder
+      fs.mkdirSync(fullPath, { recursive: true });
+
+      return { success: true, path: fullPath };
+    } catch (error) {
+      return { success: false, error: error.message };
     }
+  });
 
-    // Write file
-    fs.writeFileSync(fullPath, codeValidation.sanitized, 'utf8');
-    return { success: true, path: fullPath };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-});
+  ipcMain.handle('create-file', async (event, fileName, parentPath) => {
+    try {
+      if (!projectPath) {
+        return { success: false, error: 'No project folder selected' };
+      }
+
+      const fullPath = parentPath
+        ? path.join(projectPath, parentPath, fileName)
+        : path.join(projectPath, fileName);
+
+      // Check if file already exists
+      if (fs.existsSync(fullPath)) {
+        return { success: false, error: 'File already exists' };
+      }
+
+      // Ensure directory exists
+      const dir = path.dirname(fullPath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+
+      // Create empty file
+      fs.writeFileSync(fullPath, '', 'utf8');
+
+      return { success: true, path: fullPath };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('get-file-stats', async (event, filePath) => {
+    try {
+      if (!projectPath) {
+        return { success: false, error: 'No project folder selected' };
+      }
+
+      const fullPath = path.join(projectPath, filePath);
+
+      // Check if file exists
+      if (!fs.existsSync(fullPath)) {
+        return { success: false, error: 'File not found' };
+      }
+
+      // Get file stats
+      const stats = fs.statSync(fullPath);
+
+      return {
+        success: true,
+        stats: {
+          size: stats.size,
+          modified: stats.mtime,
+          created: stats.birthtime,
+          isFile: stats.isFile(),
+          isDirectory: stats.isDirectory()
+        }
+      };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
 
 ipcMain.handle('run-code', async (event, filePath, language, code) => {
   try {
@@ -801,4 +958,84 @@ function createMenu() {
   const menu = Menu.buildFromTemplate(template);
   Menu.setApplicationMenu(menu);
 }
+
+// Window close and save confirmation IPC handlers
+ipcMain.on('allow-window-close', () => {
+  allowWindowClose = true;
+  if (mainWindow) {
+    mainWindow.close();
+  }
+});
+
+ipcMain.on('cancel-window-close', () => {
+  allowWindowClose = false;
+});
+
+ipcMain.handle('save-as-dialog', async () => {
+  try {
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: 'Save File As',
+      defaultPath: os.homedir(),
+      filters: [
+        { name: 'JavaScript Files', extensions: ['js', 'jsx'] },
+        { name: 'TypeScript Files', extensions: ['ts', 'tsx'] },
+        { name: 'Python Files', extensions: ['py'] },
+        { name: 'HTML Files', extensions: ['html'] },
+        { name: 'CSS Files', extensions: ['css'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    });
+
+    if (!result.canceled && result.filePath) {
+      return { success: true, path: result.filePath };
+    }
+    return { success: false, cancelled: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-recent-files', async () => {
+  try {
+    const userDataPath = app.getPath('userData');
+    const recentFilesPath = path.join(userDataPath, 'recent-files.json');
+
+    if (fs.existsSync(recentFilesPath)) {
+      const data = fs.readFileSync(recentFilesPath, 'utf8');
+      const recentFiles = JSON.parse(data);
+      return { success: true, files: recentFiles };
+    }
+    return { success: true, files: [] };
+  } catch (error) {
+    console.error('Failed to get recent files:', error);
+    return { success: true, files: [] };
+  }
+});
+
+ipcMain.handle('save-recent-file', async (event, filePath) => {
+  try {
+    const userDataPath = app.getPath('userData');
+    const recentFilesPath = path.join(userDataPath, 'recent-files.json');
+
+    let recentFiles = [];
+    if (fs.existsSync(recentFilesPath)) {
+      const data = fs.readFileSync(recentFilesPath, 'utf8');
+      recentFiles = JSON.parse(data);
+    }
+
+    // Add file to the beginning of the list
+    recentFiles = [filePath, ...recentFiles.filter(f => f !== filePath)];
+
+    // Keep only last 10 files
+    recentFiles = recentFiles.slice(0, 10);
+
+    fs.writeFileSync(recentFilesPath, JSON.stringify(recentFiles, null, 2), 'utf8');
+
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to save recent file:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 

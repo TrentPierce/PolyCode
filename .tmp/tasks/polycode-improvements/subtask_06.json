@@ -1,0 +1,27 @@
+{
+  "id": "polycode-improvements-06",
+  "seq": "06",
+  "title": "Bundle size optimization",
+  "status": "completed",
+  "depends_on": [],
+  "parallel": true,
+  "context_files": [
+    "package.json",
+    "webpack.config.js"
+  ],
+  "acceptance_criteria": [
+    "Webpack bundle analyzer integrated",
+    "Bundle size reduced by at least 20%",
+    "Tree-shaking enabled",
+    "Code splitting implemented for large chunks",
+    "Monaco editor lazy-loaded",
+    "Production build optimized (minification, compression)"
+  ],
+  "deliverables": [
+    "Updated webpack.config.js with optimizations",
+    "Updated package.json with build scripts",
+    "docs/bundle-optimization.md",
+    "Updated package.json with webpack-bundle-analyzer"
+  ],
+  "estimated_hours": 4
+}

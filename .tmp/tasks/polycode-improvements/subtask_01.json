@@ -1,0 +1,29 @@
+{
+  "id": "polycode-improvements-01",
+  "seq": "01",
+  "title": "Input validation & sanitization",
+  "status": "completed",
+  "depends_on": [],
+  "parallel": true,
+  "context_files": [
+    "src/main/preload.js",
+    "src/main/main.js",
+    "src/renderer/components/AIPanel.jsx"
+  ],
+  "acceptance_criteria": [
+    "All IPC channels validate input parameters",
+    "User prompts are sanitized before processing",
+    "File paths are validated to prevent path traversal",
+    "API parameters are sanitized before sending to LLM",
+    "XSS prevention in renderer process",
+    "Input length limits enforced"
+  ],
+  "deliverables": [
+    "src/main/core/validation.js",
+    "src/renderer/utils/sanitizer.js",
+    "Updated src/main/preload.js with validation",
+    "Updated src/main/main.js with validation",
+    "Updated src/renderer/components/AIPanel.jsx with sanitization"
+  ],
+  "estimated_hours": 4
+}

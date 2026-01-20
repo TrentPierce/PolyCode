@@ -1,0 +1,27 @@
+{
+  "id": "polycode-improvements-09",
+  "seq": "09",
+  "title": "Save confirmation dialogs",
+  "status": "completed",
+  "depends_on": [],
+  "parallel": true,
+  "context_files": [
+    "src/main/main.js",
+    "src/renderer/components/Editor.jsx"
+  ],
+  "acceptance_criteria": [
+    "Confirmation shown before closing unsaved file",
+    "Confirmation before closing app with unsaved files",
+    "Auto-save indicator shown in UI",
+    "Save As functionality working",
+    "Recent files list maintained",
+    "Dirty state tracking for all files"
+  ],
+  "deliverables": [
+    "Updated src/main/main.js with window close handling",
+    "Updated src/renderer/components/Editor.jsx with dirty tracking",
+    "src/renderer/components/SaveDialog.jsx",
+    "src/renderer/components/StatusBar.jsx shows save status"
+  ],
+  "estimated_hours": 4
+}

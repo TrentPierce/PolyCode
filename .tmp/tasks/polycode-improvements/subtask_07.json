@@ -1,0 +1,28 @@
+{
+  "id": "polycode-improvements-07",
+  "seq": "07",
+  "title": "Keyboard shortcuts system",
+  "status": "completed",
+  "depends_on": [],
+  "parallel": true,
+  "context_files": [
+    "src/renderer/app.jsx",
+    "src/renderer/components/Editor.jsx"
+  ],
+  "acceptance_criteria": [
+    "Global keyboard shortcuts registered",
+    "Common shortcuts implemented (Ctrl+S, Ctrl+N, Ctrl+O, etc.)",
+    "Shortcuts configurable in settings",
+    "Shortcut conflicts detected",
+    "Shortcuts displayed in help dialog",
+    "Mac and Windows key bindings supported"
+  ],
+  "deliverables": [
+    "src/renderer/utils/shortcuts.js",
+    "src/renderer/components/ShortcutHelp.jsx",
+    "Updated src/renderer/app.jsx with shortcut registration",
+    "Updated src/renderer/components/Settings.jsx with shortcut configuration",
+    "docs/shortcuts.md"
+  ],
+  "estimated_hours": 5
+}

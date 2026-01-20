@@ -1,0 +1,29 @@
+{
+  "id": "polycode-improvements-11",
+  "seq": "11",
+  "title": "Git integration foundation",
+  "status": "pending",
+  "depends_on": [],
+  "parallel": true,
+  "context_files": [
+    "src/main/main.js",
+    "package.json"
+  ],
+  "acceptance_criteria": [
+    "Simple-git package integrated",
+    "Git status displayed in UI",
+    "Commit functionality working",
+    "Push/Pull functionality",
+    "Branch switching",
+    "Diff viewer for changes",
+    "Git history viewer"
+  ],
+  "deliverables": [
+    "src/main/core/git.js",
+    "Updated package.json with simple-git dependency",
+    "src/renderer/components/GitPanel.jsx",
+    "src/renderer/components/GitDiff.jsx",
+    "Updated src/main/main.js with git IPC handlers"
+  ],
+  "estimated_hours": 6
+}

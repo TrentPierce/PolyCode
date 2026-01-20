@@ -1,22 +1,35 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import MonacoEditor from '@monaco-editor/react';
+import {
+  configureMonaco,
+  getEditorOptions,
+  setupAutoSave,
+  AUTO_SAVE_CONFIG,
+} from '../utils/monaco-config';
 
-function Editor({ filePath, content, language, previousContent, onSave, onContentChange, onRun }) {
+function Editor({ filePath, content, language, previousContent, onSave, onContentChange, onRun, isDirty, onDirtyChange }) {
   const [editorContent, setEditorContent] = useState(content);
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+  const [isFileDirty, setIsFileDirty] = useState(false);
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
   const decorationsRef = useRef([]);
+  const autoSaveCleanupRef = useRef(null);
   const isUserTypingRef = useRef(false);
   const lastContentRef = useRef(content);
   const currentFilePathRef = useRef(filePath);
+  const originalContentRef = useRef(content); // Track original content for dirty state
+  const dirtyCheckTimeoutRef = useRef(null);
 
   useEffect(() => {
     // Reset typing flag when file changes
     if (filePath !== currentFilePathRef.current) {
       isUserTypingRef.current = false;
       currentFilePathRef.current = filePath;
+      // Reset original content when file changes
+      originalContentRef.current = content;
     }
-    
+
     // Only update if content prop changed externally (not from user typing)
     // and it's different from what's currently in the editor
     if (editorRef.current && !isUserTypingRef.current) {
@@ -27,7 +40,9 @@ function Editor({ filePath, content, language, previousContent, onSave, onConten
         editorRef.current.setValue(content);
         setEditorContent(content);
         lastContentRef.current = content;
-        
+        // Update original content reference when file is loaded
+        originalContentRef.current = content;
+
         // Update change decorations if previous content exists
         if (previousContent && previousContent !== content && monacoRef.current) {
           updateChangeDecorations(editorRef.current, monacoRef.current, previousContent, content);
@@ -40,8 +55,20 @@ function Editor({ filePath, content, language, previousContent, onSave, onConten
       // If editor not mounted yet, just update state
       setEditorContent(content);
       lastContentRef.current = content;
+      originalContentRef.current = content;
     }
   }, [content, filePath, previousContent]);
+
+  // Cleanup effect for auto-save
+  useEffect(() => {
+    return () => {
+      // Cleanup auto-save when component unmounts
+      if (autoSaveCleanupRef.current) {
+        autoSaveCleanupRef.current();
+        autoSaveCleanupRef.current = null;
+      }
+    };
+  }, []);
 
   const updateChangeDecorations = React.useCallback((editor, monaco, oldText, newText) => {
     // Clear existing decorations
@@ -106,15 +133,18 @@ function Editor({ filePath, content, language, previousContent, onSave, onConten
     }
   }, []);
   
-  const handleEditorDidMount = (editor, monaco) => {
+  const handleEditorDidMount = useCallback((editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
+
+    // Configure Monaco with custom theme and settings
+    configureMonaco(monaco);
 
     // Configure keyboard shortcuts
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
       handleSave();
     });
-    
+
     // Add Run shortcut (Ctrl+R or Cmd+R)
     if (onRun) {
       editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyR, () => {
@@ -122,19 +152,52 @@ function Editor({ filePath, content, language, previousContent, onSave, onConten
         onRun(currentContent);
       });
     }
-    
+
+    // Setup auto-save
+    if (autoSaveEnabled) {
+      autoSaveCleanupRef.current = setupAutoSave(
+        editor,
+        (content) => {
+          onSave(filePath, content);
+          // Update original content reference after auto-save
+          originalContentRef.current = content;
+          // Reset dirty state
+          setIsFileDirty(false);
+          if (onDirtyChange) {
+            onDirtyChange(false);
+          }
+        },
+        {
+          ...AUTO_SAVE_CONFIG,
+          delay: 30000, // 30 seconds default
+          showNotification: false, // Disable notifications to avoid UI clutter
+        }
+      );
+    }
+
     // Apply change decorations if previous content exists
     if (previousContent && previousContent !== content) {
       updateChangeDecorations(editor, monaco, previousContent, content);
     }
-  };
+  }, [autoSaveEnabled, content, filePath, onDirtyChange, onSave, onRun, previousContent]);
 
   const handleEditorChange = (value) => {
     const newValue = value || '';
     isUserTypingRef.current = true;
     setEditorContent(newValue);
     lastContentRef.current = newValue;
-    
+
+    // Check if content is dirty (different from original)
+    const isContentDirty = newValue !== originalContentRef.current;
+
+    // Debounce dirty state check to avoid excessive updates
+    clearTimeout(dirtyCheckTimeoutRef.current);
+    dirtyCheckTimeoutRef.current = setTimeout(() => {
+      if (onDirtyChange) {
+        onDirtyChange(isContentDirty);
+      }
+    }, 500);
+
     // Notify parent of content changes (debounced to prevent excessive updates)
     if (onContentChange) {
       // Use a small timeout to debounce rapid changes
@@ -155,6 +218,12 @@ function Editor({ filePath, content, language, previousContent, onSave, onConten
     if (editorRef.current) {
       const currentContent = editorRef.current.getValue();
       onSave(filePath, currentContent);
+      // Update original content reference after save
+      originalContentRef.current = currentContent;
+      // Reset dirty state
+      if (onDirtyChange) {
+        onDirtyChange(false);
+      }
     }
   };
 
@@ -184,21 +253,13 @@ function Editor({ filePath, content, language, previousContent, onSave, onConten
           height="100%"
           language={language}
           value={editorContent}
-          theme="vs-dark"
+          theme="custom-dark"
           onChange={handleEditorChange}
           onMount={handleEditorDidMount}
-          options={{
-            minimap: { enabled: true },
-            fontSize: 14,
-            lineNumbers: 'on',
-            roundedSelection: false,
-            scrollBeyondLastLine: false,
-            automaticLayout: true,
-            tabSize: 2,
-            wordWrap: 'on',
-            formatOnPaste: true,
-            formatOnType: true
-          }}
+          options={getEditorOptions({
+            // Preserve any specific overrides if needed
+            language: language,
+          })}
         />
       </div>
     </div>

@@ -1,0 +1,32 @@
+{
+  "id": "polycode-improvements-22",
+  "seq": "22",
+  "title": "State management system",
+  "status": "pending",
+  "depends_on": ["16"],
+  "parallel": false,
+  "context_files": [
+    "src/renderer/app.jsx",
+    "src/renderer/components/AIPanel.jsx",
+    "src/renderer/components/Settings.jsx"
+  ],
+  "acceptance_criteria": [
+    "Redux or Zustand integrated",
+    "Global state defined",
+    "Actions and reducers created",
+    "Settings stored in state",
+    "File state managed centrally",
+    "AI chat history in state",
+    "State persistence to localStorage"
+  ],
+  "deliverables": [
+    "src/renderer/store/index.js (or store.ts)",
+    "src/renderer/store/actions.js",
+    "src/renderer/store/reducers.js",
+    "Updated package.json with state management dependency",
+    "Updated src/renderer/app.jsx with provider",
+    "Refactored src/renderer/components/AIPanel.jsx to use store",
+    "Refactored src/renderer/components/Settings.jsx to use store"
+  ],
+  "estimated_hours": 6
+}

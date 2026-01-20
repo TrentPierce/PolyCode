@@ -45,6 +45,42 @@ contextBridge.exposeInMainWorld('electronAPI', {
   runCode: (filePath, language, code) =>
     ipcRenderer.invoke('run-code', filePath, language, code),
 
+  // File operation IPC functions
+  renameFile: (filePath, newPath) =>
+    ipcRenderer.invoke('rename-file', filePath, newPath),
+
+  deleteFile: (filePath) =>
+    ipcRenderer.invoke('delete-file', filePath),
+
+  createFolder: (folderName, parentPath) =>
+    ipcRenderer.invoke('create-folder', folderName, parentPath),
+
+  createFile: (fileName, parentPath) =>
+    ipcRenderer.invoke('create-file', fileName, parentPath),
+
+  getFileStats: (filePath) =>
+    ipcRenderer.invoke('get-file-stats', filePath),
+
+  // Window close and save confirmation IPC functions
+  saveAsDialog: () =>
+    ipcRenderer.invoke('save-as-dialog'),
+
+  getRecentFiles: () =>
+    ipcRenderer.invoke('get-recent-files'),
+
+  saveRecentFile: (filePath) =>
+    ipcRenderer.invoke('save-recent-file', filePath),
+
+  allowWindowClose: () =>
+    ipcRenderer.send('allow-window-close'),
+
+  cancelWindowClose: () =>
+    ipcRenderer.send('cancel-window-close'),
+
+  onUnsavedChangesCheck: (callback) => {
+    ipcRenderer.on('check-unsaved-changes', callback);
+  },
+
   // Cache management IPC functions
   getCacheStats: () =>
     ipcRenderer.invoke('get-cache-stats'),
@@ -66,6 +102,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Remove deliberation update listener
   removeDeliberationListener: () => {
     ipcRenderer.removeAllListeners('deliberation-update');
+  },
+
+  // Remove unsaved changes check listener
+  removeUnsavedChangesListener: () => {
+    ipcRenderer.removeAllListeners('check-unsaved-changes');
   }
 });
 

@@ -1,0 +1,29 @@
+{
+  "id": "polycode-improvements-18",
+  "seq": "18",
+  "title": "Enhanced rubric evaluation",
+  "status": "pending",
+  "depends_on": [],
+  "parallel": true,
+  "context_files": [
+    "src/main/core/rubric.js",
+    "src/main/core/orchestrator.js",
+    "ARCHITECTURE.md"
+  ],
+  "acceptance_criteria": [
+    "Rubric evaluation uses LLM for scoring",
+    "Multiple evaluation criteria refined",
+    "Customizable rubric weights",
+    "Evaluation history tracked",
+    "Quality metrics visualization",
+    "Rubric can be exported/imported"
+  ],
+  "deliverables": [
+    "Enhanced src/main/core/rubric.js",
+    "src/main/core/llm-evaluator.js",
+    "Updated src/main/core/orchestrator.js with enhanced evaluation",
+    "src/renderer/components/QualityMetrics.jsx",
+    "src/renderer/components/RubricEditor.jsx"
+  ],
+  "estimated_hours": 5
+}

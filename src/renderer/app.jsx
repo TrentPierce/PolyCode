@@ -7,6 +7,9 @@ import StatusBar from './components/StatusBar';
 import Settings from './components/Settings';
 import DeliberationChat from './components/DeliberationChat';
 import OutputModal from './components/OutputModal';
+import SaveDialog from './components/SaveDialog';
+import ShortcutHelp from './components/ShortcutHelp';
+import { initializeShortcuts } from './utils/shortcuts';
 import './styles/main.css';
 
 function App() {
@@ -21,18 +24,68 @@ function App() {
   const [activeTab, setActiveTab] = useState('editor'); // 'editor' or 'deliberation'
   const [fileVersions, setFileVersions] = useState({}); // Track previous versions for diff
   const [outputModal, setOutputModal] = useState({ isOpen: false, title: '', message: '', isError: false });
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [dirtyFiles, setDirtyFiles] = useState({}); // Track dirty state for each file
+  const [lastSavedTimes, setLastSavedTimes] = useState({}); // Track last saved timestamps
+  const [saveDialog, setSaveDialog] = useState({ isOpen: false, fileName: '', multiple: false, unsavedFiles: [] });
+  const [recentFiles, setRecentFiles] = useState([]);
 
   useEffect(() => {
     // Check LMStudio connection and load models
     checkConnection();
-    
+
     // Check for existing project path
     window.electronAPI.getProjectPath().then(result => {
       if (result.success && result.path) {
         setProjectPath(result.path);
       }
     });
-  }, []);
+
+    // Load recent files
+    window.electronAPI.getRecentFiles().then(result => {
+      if (result.success) {
+        setRecentFiles(result.files || []);
+      }
+    });
+
+    // Listen for window close check
+    const handleUnsavedCheck = () => {
+      const unsaved = Object.keys(dirtyFiles).filter(filePath => dirtyFiles[filePath]);
+      if (unsaved.length > 0) {
+        setSaveDialog({
+          isOpen: true,
+          fileName: activeFile || 'multiple files',
+          multiple: unsaved.length > 1,
+          unsavedFiles: unsaved
+        });
+      } else {
+        // No unsaved changes, allow close
+        window.electronAPI.allowWindowClose();
+      }
+    };
+
+    window.electronAPI.onUnsavedChangesCheck?.(handleUnsavedCheck);
+    window.addEventListener('check-unsaved-changes', handleUnsavedCheck);
+
+    // Initialize keyboard shortcuts
+    const handlers = {
+      'new-file': handleFileCreate,
+      'open-file': handleOpenProject,
+      'save-file': handleSaveProject,
+      'save-as': handleSaveAs,
+      'toggle-settings': () => setShowSettings(true),
+      'show-shortcuts': () => setShowShortcuts(true),
+      'run-code': () => handleRunCode()
+    };
+
+    const shortcutsManager = initializeShortcuts(handlers);
+
+    return () => {
+      shortcutsManager.disable();
+      window.removeEventListener('check-unsaved-changes', handleUnsavedCheck);
+      window.electronAPI.removeUnsavedChangesListener?.();
+    };
+  }, [dirtyFiles, activeFile]);
 
   const checkConnection = async () => {
     try {
@@ -67,11 +120,104 @@ function App() {
     setLanguage(langMap[ext] || 'javascript');
   };
 
-  const handleFileSave = (filePath, content) => {
+  const handleFileSave = async (filePath, content) => {
+    // Update local state
     setFiles(prev => ({
       ...prev,
       [filePath]: content
     }));
+
+    // If we have a project path, save to disk
+    if (projectPath) {
+      try {
+        const result = await window.electronAPI.saveFile(filePath, content);
+        if (result.success) {
+          // Update dirty state
+          setDirtyFiles(prev => ({
+            ...prev,
+            [filePath]: false
+          }));
+
+          // Update last saved time
+          setLastSavedTimes(prev => ({
+            ...prev,
+            [filePath]: new Date().toISOString()
+          }));
+
+          // Add to recent files
+          const fullPath = result.path;
+          window.electronAPI.saveRecentFile(fullPath);
+        }
+      } catch (error) {
+        console.error('Failed to save file:', error);
+      }
+    }
+  };
+
+  const handleDirtyChange = (filePath, isDirty) => {
+    setDirtyFiles(prev => ({
+      ...prev,
+      [filePath]: isDirty
+    }));
+  };
+
+  const handleSaveAs = async () => {
+    if (!activeFile) {
+      alert('No file is currently open');
+      return;
+    }
+
+    const result = await window.electronAPI.saveAsDialog();
+    if (result.success && result.path) {
+      const content = files[activeFile] || '';
+      // Save to the new location
+      try {
+        const fs = require('fs');
+        fs.writeFileSync(result.path, content, 'utf8');
+        alert(`File saved to: ${result.path}`);
+        // Add to recent files
+        window.electronAPI.saveRecentFile(result.path);
+      } catch (error) {
+        alert(`Failed to save file: ${error.message}`);
+      }
+    }
+  };
+
+  const handleSaveDialogSave = async () => {
+    setSaveDialog({ isOpen: false, fileName: '', multiple: false, unsavedFiles: [] });
+
+    const unsavedFiles = saveDialog.unsavedFiles.length > 0
+      ? saveDialog.unsavedFiles
+      : [activeFile].filter(Boolean);
+
+    // Save all unsaved files
+    for (const filePath of unsavedFiles) {
+      const content = files[filePath] || '';
+      await window.electronAPI.saveFile(filePath, content);
+      setDirtyFiles(prev => ({
+        ...prev,
+        [filePath]: false
+      }));
+      setLastSavedTimes(prev => ({
+        ...prev,
+        [filePath]: new Date().toISOString()
+      }));
+    }
+
+    // Allow window close after saving
+    window.electronAPI.allowWindowClose();
+  };
+
+  const handleSaveDialogDontSave = () => {
+    setSaveDialog({ isOpen: false, fileName: '', multiple: false, unsavedFiles: [] });
+    // Allow window close without saving
+    window.electronAPI.allowWindowClose();
+  };
+
+  const handleSaveDialogCancel = () => {
+    setSaveDialog({ isOpen: false, fileName: '', multiple: false, unsavedFiles: [] });
+    // Cancel window close
+    window.electronAPI.cancelWindowClose();
   };
 
   const handleFileCreate = (filePath) => {
@@ -80,6 +226,78 @@ function App() {
       [filePath]: ''
     }));
     setActiveFile(filePath);
+  };
+
+  const handleFileDelete = async (filePath) => {
+    try {
+      const result = await window.electronAPI.deleteFile(filePath);
+      if (result.success) {
+        setFiles(prev => {
+          const newFiles = { ...prev };
+          delete newFiles[filePath];
+          return newFiles;
+        });
+
+        // Clear active file if it was deleted
+        if (activeFile === filePath) {
+          setActiveFile(null);
+        }
+      } else {
+        alert(`Failed to delete file: ${result.error}`);
+      }
+    } catch (error) {
+      alert(`Error deleting file: ${error.message}`);
+    }
+  };
+
+  const handleFileRename = async (oldPath, newPath) => {
+    try {
+      const result = await window.electronAPI.renameFile(oldPath, newPath);
+      if (result.success) {
+        setFiles(prev => {
+          const newFiles = {};
+          Object.entries(prev).forEach(([path, content]) => {
+            if (path === oldPath) {
+              newFiles[newPath] = content;
+            } else {
+              newFiles[path] = content;
+            }
+          });
+          return newFiles;
+        });
+
+        // Update active file if needed
+        if (activeFile === oldPath) {
+          setActiveFile(newPath);
+        }
+      } else {
+        alert(`Failed to rename file: ${result.error}`);
+      }
+    } catch (error) {
+      alert(`Error renaming file: ${error.message}`);
+    }
+  };
+
+  const handleFolderCreate = async (folderName, parentPath) => {
+    try {
+      const result = await window.electronAPI.createFolder(folderName, parentPath);
+      if (!result.success) {
+        alert(`Failed to create folder: ${result.error}`);
+      }
+      // Refresh project files after folder creation
+      if (projectPath) {
+        const openResult = await window.electronAPI.openProject();
+        if (openResult.success) {
+          setFiles(openResult.files);
+        }
+      }
+    } catch (error) {
+      alert(`Error creating folder: ${error.message}`);
+    }
+  };
+
+  const handleFilesUpdate = (updatedFiles) => {
+    setFiles(updatedFiles);
   };
 
   const detectLanguageFromPrompt = (prompt, generatedCode) => {
@@ -414,11 +632,15 @@ function App() {
           files={files}
           onFileSelect={handleFileSelect}
           onFileCreate={handleFileCreate}
+          onFileDelete={handleFileDelete}
+          onFileRename={handleFileRename}
+          onFolderCreate={handleFolderCreate}
           activeFile={activeFile}
           projectPath={projectPath}
           onNewProject={handleNewProject}
           onOpenProject={handleOpenProject}
           onSaveProject={handleSaveProject}
+          onFilesUpdate={handleFilesUpdate}
         />
       </div>
       <div className="main-content">
@@ -449,6 +671,8 @@ function App() {
                 onSave={handleFileSave}
                 onContentChange={(content) => handleEditorContentChange(activeFile, content)}
                 onRun={handleRunCode}
+                isDirty={dirtyFiles[activeFile] || false}
+                onDirtyChange={(isDirty) => handleDirtyChange(activeFile, isDirty)}
               />
             ) : (
               <div className="welcome-screen">
@@ -461,8 +685,8 @@ function App() {
               </div>
             )
           ) : (
-            <DeliberationChat 
-              messages={deliberationMessages} 
+            <DeliberationChat
+              messages={deliberationMessages}
               isActive={activeTab === 'deliberation'}
             />
           )}
@@ -482,6 +706,8 @@ function App() {
         language={language}
         isConnected={isConnected}
         activeFile={activeFile}
+        isDirty={dirtyFiles[activeFile] || false}
+        lastSaved={lastSavedTimes[activeFile]}
         onSettingsClick={() => setShowSettings(true)}
       />
       <Settings
@@ -498,6 +724,15 @@ function App() {
         message={outputModal.message}
         isError={outputModal.isError}
         onClose={() => setOutputModal({ isOpen: false, title: '', message: '', isError: false })}
+      />
+      <SaveDialog
+        isOpen={saveDialog.isOpen}
+        fileName={saveDialog.fileName}
+        multipleFiles={saveDialog.multiple}
+        unsavedFiles={saveDialog.unsavedFiles}
+        onSave={handleSaveDialogSave}
+        onDontSave={handleSaveDialogDontSave}
+        onCancel={handleSaveDialogCancel}
       />
     </div>
   );

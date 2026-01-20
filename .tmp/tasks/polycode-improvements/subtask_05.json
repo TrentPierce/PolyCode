@@ -1,0 +1,27 @@
+{
+  "id": "polycode-improvements-05",
+  "seq": "05",
+  "title": "Response caching system",
+  "status": "completed",
+  "depends_on": [],
+  "parallel": true,
+  "context_files": [
+    "src/main/core/orchestrator.js",
+    "src/main/core/lmstudio-client.js"
+  ],
+  "acceptance_criteria": [
+    "LLM responses cached with prompt hash",
+    "Cache hit returns cached response instantly",
+    "Cache configurable (size, TTL)",
+    "Cache can be cleared manually",
+    "Cache persists across sessions",
+    "Metrics track cache hit rate"
+  ],
+  "deliverables": [
+    "src/main/core/cache.js",
+    "Updated src/main/core/orchestrator.js with caching",
+    "Updated src/main/core/lmstudio-client.js with caching",
+    "Settings UI for cache management in src/renderer/components/Settings.jsx"
+  ],
+  "estimated_hours": 4
+}
