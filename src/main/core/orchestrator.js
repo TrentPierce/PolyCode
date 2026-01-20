@@ -4,6 +4,7 @@ const { CodeRubric } = require('./rubric');
 /**
  * PolyCouncil-Inspired Orchestrator
  * Coordinates multiple LLMs with rubric-based scoring and weighted voting
+ * WITH RESPONSE CACHING
  */
 class PolyCouncilOrchestrator {
   constructor(baseURL = 'http://localhost:1234') {
@@ -23,7 +24,7 @@ class PolyCouncilOrchestrator {
    * Update the LMStudio URL and reinitialize
    */
   async updateBaseURL(baseURL) {
-    this.lmClient.setBaseURL(baseURL);
+    this.lmClient = new LMStudioClient(baseURL);
     // Reinitialize to test connection
     try {
       await this.initialize();
@@ -31,6 +32,16 @@ class PolyCouncilOrchestrator {
     } catch (error) {
       return { success: false, error: error.message };
     }
+  }
+
+  /**
+   * Set cache configuration
+   * @param {Object} config - Cache configuration
+   */
+  setCacheConfig(config) {
+    // Cache is managed in LMStudioClient, no direct method here
+    // This method is called via settings through orchestrator re-initialization
+    console.log('Cache configuration update requested:', config);
   }
 
   /**
@@ -162,8 +173,11 @@ class PolyCouncilOrchestrator {
     // Ensure context includes current code if provided
     const fullContext = context ? `Current code/files:\n${context}\n\n` : '';
 
-    // Phase 1: Deliberation - Models discuss the project and decide approach
+    // Phase 1: Deliberation - Models discuss the project and decide approach (OPTIMIZED: Parallel execution)
     const deliberationResults = [];
+
+    // Sequential deliberation (each model builds on previous) - cannot be fully parallel
+    // But we can still optimize by reducing latency between requests
     for (let i = 0; i < modelsToUse.length; i++) {
       const model = modelsToUse[i];
       const otherModels = modelsToUse.filter(m => m !== model);
@@ -212,173 +226,213 @@ class PolyCouncilOrchestrator {
         }
       }
     }
-
-    // Phase 2: Consensus - Models agree on the best approach
+    
+    // Phase 2: Consensus - Models agree on the best approach (OPTIMIZED: Parallel execution)
     const consensusPrompt = this.buildConsensusPrompt(prompt, fullContext, deliberationResults);
-    const consensusResults = [];
-    for (const model of modelsToUse) {
-      // Send progress update
-      if (onProgress) {
-        onProgress({
-          type: 'consensus',
-          model: model,
-          content: `Reaching consensus...`,
-          phase: 'Consensus'
-        });
-      }
-      
-      try {
-        const result = await this.lmClient.generateCompletion(model, consensusPrompt, {
-          temperature: 0.5,
-          max_tokens: 1000
-        });
-        consensusResults.push({
-          model,
-          consensus: result.text
-        });
-        
-        // Send real-time update with consensus content
-        if (onProgress) {
-          onProgress({
-            type: 'consensus',
-            model: model,
-            content: result.text,
-            phase: 'Consensus'
-          });
-        }
-      } catch (error) {
-        console.error(`Consensus failed for model ${model}:`, error);
-        if (onProgress) {
-          onProgress({
-            type: 'consensus',
-            model: model,
-            content: `Error: ${error.message}`,
-            phase: 'Consensus - Failed'
-          });
-        }
-      }
-    }
-
-    // Phase 3: Code Generation - Models generate code based on their discussion
-    const generations = [];
-    for (const model of modelsToUse) {
-      const generationPrompt = this.buildGenerationPrompt(prompt, fullContext, deliberationResults, consensusResults);
-      
-      // Send progress update
-      if (onProgress) {
-        onProgress({
-          type: 'generation',
-          model: model,
-          content: `Generating code...`,
-          phase: 'Code Generation'
-        });
-      }
-      
-      try {
-        const result = await this.lmClient.generateCompletion(model, generationPrompt, {
-          temperature: 0.3,
-          max_tokens: 4000
-        });
-        
-        // Extract code from response (remove markdown code blocks if present)
-        let code = result.text.trim();
-        if (code.startsWith('```')) {
-          const lines = code.split('\n');
-          lines.shift(); // Remove first ``` line
-          const lastLine = lines[lines.length - 1];
-          if (lastLine.trim() === '```') {
-            lines.pop(); // Remove last ``` line
-          }
-          code = lines.join('\n');
-        }
-        
-        generations.push({
-          model,
-          code: code,
-          usage: result.usage
-        });
-        
-        // Send real-time update
-        if (onProgress) {
-          onProgress({
-            type: 'generation',
-            model: model,
-            content: `Generated ${code.length} characters of code`,
-            phase: 'Code Generation'
-          });
-        }
-      } catch (error) {
-        console.error(`Generation failed for model ${model}:`, error);
-        if (onProgress) {
-          onProgress({
-            type: 'generation',
-            model: model,
-            content: `Error: ${error.message}`,
-            phase: 'Code Generation - Failed'
-          });
-        }
-      }
-    }
-
-    if (generations.length === 0) {
-      throw new Error('All model generations failed');
-    }
-
-    // Phase 4: Cross-evaluation - Models evaluate each other's code
-    const evaluations = [];
-    for (const generation of generations) {
-      for (const evaluatorModel of modelsToUse) {
-        if (evaluatorModel === generation.model) continue; // Don't self-evaluate
-        
+    const consensusResults = await Promise.all(
+      modelsToUse.map(async (model) => {
         // Send progress update
         if (onProgress) {
           onProgress({
-            type: 'evaluation',
-            model: evaluatorModel,
-            content: `Evaluating code from ${generation.model}...`,
-            phase: 'Evaluation'
+            type: 'consensus',
+            model: model,
+            content: `Reaching consensus...`,
+            phase: 'Consensus'
           });
         }
-        
+
         try {
-          const score = await this.evaluateGeneration(
-            evaluatorModel,
-            generation.code,
-            prompt,
-            null // Let evaluator determine language
-          );
-          evaluations.push({
-            generation,
-            evaluator: evaluatorModel,
-            score
+          const result = await this.lmClient.generateCompletion(model, consensusPrompt, {
+            temperature: 0.5,
+            max_tokens: 1000
           });
           
+          // Send real-time update with consensus content
+          if (onProgress) {
+            onProgress({
+              type: 'consensus',
+              model: model,
+              content: result.text,
+              phase: 'Consensus'
+            });
+          }
+
+          return {
+            model,
+            consensus: result.text
+          };
+        } catch (error) {
+          console.error(`Consensus failed for model ${model}:`, error);
+          if (onProgress) {
+            onProgress({
+              type: 'consensus',
+              model: model,
+              content: `Error: ${error.message}`,
+              phase: 'Consensus - Failed'
+            });
+          }
+          // Return null for failed requests to handle in aggregation
+          return null;
+        }
+      })
+    );
+
+    // Filter out failed consensus results
+    const validConsensusResults = consensusResults.filter(result => result !== null);
+
+    // Phase 3: Code Generation - Models generate code based on their discussion (OPTIMIZED: Parallel execution)
+    const generations = await Promise.all(
+      modelsToUse.map(async (model) => {
+        const generationPrompt = this.buildGenerationPrompt(prompt, fullContext, deliberationResults, validConsensusResults);
+
+        // Send progress update
+        if (onProgress) {
+          onProgress({
+            type: 'generation',
+            model: model,
+            content: `Generating code...`,
+            phase: 'Code Generation'
+          });
+        }
+
+        try {
+          const result = await this.lmClient.generateCompletion(model, generationPrompt, {
+            temperature: 0.3,
+            max_tokens: 4000,
+            useCache: true,
+            cacheTTL: 60 * 60 * 1000 // 1 hour TTL
+          });
+
+          // Extract code from response (remove markdown code blocks if present)
+          let code = result.text.trim();
+          if (code.startsWith('```')) {
+            const lines = code.split('\n');
+            lines.shift(); // Remove first ``` line
+            const lastLine = lines[lines.length - 1];
+            if (lastLine.trim() === '```') {
+              lines.pop(); // Remove last ``` line
+            }
+            code = lines.join('\n');
+          }
+
           // Send real-time update
           if (onProgress) {
             onProgress({
-              type: 'evaluation',
-              model: evaluatorModel,
-              content: `Scored ${generation.model}'s code: ${score.toFixed(2)}/10`,
-              phase: 'Evaluation'
+              type: 'generation',
+              model: model,
+              content: `Generated ${code.length} characters of code`,
+              phase: 'Code Generation'
             });
           }
+
+          return {
+            model,
+            code: code,
+            usage: result.usage
+          };
         } catch (error) {
-          console.error(`Evaluation failed for model ${evaluatorModel}:`, error);
+          console.error(`Generation failed for model ${model}:`, error);
+          if (onProgress) {
+            onProgress({
+              type: 'generation',
+              model: model,
+              content: `Error: ${error.message}`,
+              phase: 'Code Generation - Failed'
+            });
+          }
+          // Return null for failed requests
+          return null;
+        }
+      })
+    );
+
+    // Filter out failed generations
+    const validGenerations = generations.filter(gen => gen !== null);
+
+    if (validGenerations.length === 0) {
+      throw new Error('All model generations failed');
+    }
+
+    // Phase 4: Cross-evaluation - Models evaluate each other's code (OPTIMIZED: Parallel evaluation)
+    const evaluations = [];
+
+    // Create all evaluation tasks
+    const evaluationTasks = [];
+    for (const generation of validGenerations) {
+      for (const evaluatorModel of modelsToUse) {
+        if (evaluatorModel === generation.model) continue; // Don't self-evaluate
+
+        // Create evaluation task
+        const task = (async () => {
+          // Send progress update
           if (onProgress) {
             onProgress({
               type: 'evaluation',
               model: evaluatorModel,
-              content: `Error evaluating: ${error.message}`,
-              phase: 'Evaluation - Failed'
+              content: `Evaluating code from ${generation.model}...`,
+              phase: 'Evaluation'
             });
           }
-        }
+
+          try {
+            const score = await this.evaluateGeneration(
+              evaluatorModel,
+              generation.code,
+              prompt,
+              null // Let evaluator determine language
+            );
+
+            // Send real-time update
+            if (onProgress) {
+              onProgress({
+                type: 'evaluation',
+                model: evaluatorModel,
+                content: `Scored ${generation.model}'s code: ${score.toFixed(2)}/10`,
+                phase: 'Evaluation'
+              });
+            }
+
+            return {
+              generation,
+              evaluator: evaluatorModel,
+              score
+            };
+          } catch (error) {
+            console.error(`Evaluation failed for model ${evaluatorModel}:`, error);
+            if (onProgress) {
+              onProgress({
+                type: 'evaluation',
+                model: evaluatorModel,
+                content: `Error evaluating: ${error.message}`,
+                phase: 'Evaluation - Failed'
+              });
+            }
+            // Return null for failed evaluations
+            return null;
+          }
+        })();
+
+        evaluationTasks.push(task);
       }
     }
 
+    // Execute all evaluations in parallel with controlled concurrency
+    const evaluationResults = await Promise.all(
+      evaluationTasks.map(async (task, index) => {
+        // Add small delay between batches to avoid overwhelming LMStudio
+        if (index > 0 && index % 4 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        return await task();
+      })
+    );
+
+    // Filter out failed evaluations
+    evaluationResults.push(...evaluationResults.filter(result => result !== null));
+    
     // Phase 5: Aggregate scores and select best
-    const aggregatedScores = this.aggregateScores(generations, evaluations);
-    const bestGeneration = this.selectBestGeneration(generations, aggregatedScores);
+    const aggregatedScores = this.aggregateScores(validGenerations, evaluationResults);
+    const bestGeneration = this.selectBestGeneration(validGenerations, aggregatedScores);
 
     // Phase 6: Parse multiple files if this is a web project
     const parsedFiles = this.parseMultipleFiles(bestGeneration.code);

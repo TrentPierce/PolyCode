@@ -1,12 +1,15 @@
 const axios = require('axios');
+const { getCache } = require('./cache');
 
 /**
  * LMStudio Client - Handles communication with local LMStudio API
  * Compatible with OpenAI API format
+ * WITH RESPONSE CACHING
  */
 class LMStudioClient {
   constructor(baseURL = 'http://localhost:1234') {
     this.setBaseURL(baseURL);
+    this.cache = getCache(); // Get global cache instance
   }
 
   /**
@@ -48,19 +51,45 @@ class LMStudioClient {
   }
 
   /**
-   * Generate completion using a specific model
+   * Generate completion using a specific model (with caching support)
    * @param {string} model - Model identifier
    * @param {string} prompt - Input prompt
    * @param {object} options - Generation options
+   * @returns {object} Result with text, model, usage, fromCache, cacheAge
    */
   async generateCompletion(model, prompt, options = {}) {
     const {
       temperature = 0.7,
       max_tokens = 2000,
       top_p = 0.9,
-      stop = null
+      stop = null,
+      useCache = true,
+      cacheTTL = null
     } = options;
 
+    // Check cache first if enabled
+    if (useCache) {
+      const cached = this.cache.get(prompt, model, {
+        temperature,
+        max_tokens,
+        top_p,
+        stop,
+        ttl: cacheTTL
+      });
+
+      if (cached) {
+        console.log(`[CACHE HIT] Model: ${model}, Key: ${cached.key.substring(0, 16)}...`);
+        return {
+          text: cached.value.text,
+          model: cached.value.model,
+          usage: cached.value.usage,
+          fromCache: true,
+          cacheAge: cached.age
+        };
+      }
+    }
+
+    // Cache miss - generate new response
     try {
       const response = await this.apiClient.post('/chat/completions', {
         model: model,
@@ -76,11 +105,25 @@ class LMStudioClient {
         stop
       });
 
-      return {
+      const result = {
         text: response.data.choices[0].message.content,
         model: response.data.model,
-        usage: response.data.usage
+        usage: response.data.usage,
+        fromCache: false
       };
+
+      // Cache the result for future requests
+      this.cache.set(prompt, model, result, {
+        temperature,
+        max_tokens,
+        top_p,
+        stop,
+        ttl: cacheTTL
+      });
+
+      console.log(`[CACHE MISS] Model: ${model}, Cached response for future requests`);
+
+      return result;
     } catch (error) {
       throw new Error(`Generation failed: ${error.message}`);
     }
@@ -118,7 +161,19 @@ class LMStudioClient {
 
     return fullPrompt;
   }
+
+  /**
+   * Clear cache for specific model or all models
+   * @param {string} model - Model ID to clear (or null for all)
+   * @returns {number} Number of entries cleared
+   */
+  clearCache(model = null) {
+    if (model) {
+      return this.cache.evictModel(model);
+    } else {
+      return this.cache.clear();
+    }
+  }
 }
 
 module.exports = { LMStudioClient };
-
