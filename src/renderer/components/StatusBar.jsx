@@ -6,7 +6,8 @@ function StatusBar({
   activeFile,
   onSettingsClick,
   isDirty,
-  lastSaved
+  lastSaved,
+  lspStatus
 }) {
   const formatLastSaved = (timestamp) => {
     if (!timestamp) return 'Not saved';
@@ -20,10 +21,29 @@ function StatusBar({
     return saved.toLocaleDateString();
   };
 
+  const getLSPStatusDisplay = () => {
+    switch (lspStatus) {
+      case 'connected':
+        return { icon: '✓', text: 'LSP', color: '#4ec9b0' };
+      case 'starting':
+        return { icon: '⟳', text: 'LSP...', color: '#cca700' };
+      case 'error':
+        return { icon: '✗', text: 'LSP Error', color: '#f14c4c' };
+      case 'disconnected':
+      default:
+        return { icon: '○', text: 'No LSP', color: '#858585' };
+    }
+  };
+
+  const lspDisplay = getLSPStatusDisplay();
+
   return (
     <div className="status-bar">
       <div className="status-item">
         {isConnected ? '✓ LMStudio Connected' : '✗ LMStudio Disconnected'}
+      </div>
+      <div className="status-item" style={{ color: lspDisplay.color, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+        {lspDisplay.icon} {lspDisplay.text}
       </div>
       {activeFile && (
         <div className="status-item">
@@ -79,4 +99,5 @@ function StatusBar({
 }
 
 export default StatusBar;
+
 

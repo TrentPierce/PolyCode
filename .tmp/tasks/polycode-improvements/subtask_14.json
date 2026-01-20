@@ -2,7 +2,7 @@
   "id": "polycode-improvements-14",
   "seq": "14",
   "title": "LSP support foundation",
-  "status": "pending",
+  "status": "completed",
   "depends_on": [],
   "parallel": true,
   "context_files": [

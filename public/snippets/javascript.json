@@ -1,0 +1,92 @@
+{
+  "console.log": {
+    "prefix": "clg",
+    "description": "Console log",
+    "body": [
+      "console.log(${1:message});"
+    ],
+    "language": "javascript"
+  },
+  "console.error": {
+    "prefix": "cle",
+    "description": "Console error",
+    "body": [
+      "console.error(${1:error});"
+    ],
+    "language": "javascript"
+  },
+  "function declaration": {
+    "prefix": "fn",
+    "description": "Function declaration",
+    "body": [
+      "function ${1:functionName}(${2:parameters}) {",
+      "\t${3:// code}",
+      "}"
+    ],
+    "language": "javascript"
+  },
+  "arrow function": {
+    "prefix": "af",
+    "description": "Arrow function",
+    "body": [
+      "const ${1:functionName} = (${2:parameters}) => {",
+      "\t${3:// code}",
+      "};"
+    ],
+    "language": "javascript"
+  },
+  "class": {
+    "prefix": "class",
+    "description": "Class definition",
+    "body": [
+      "class ${1:ClassName} {",
+      "\tconstructor(${2:parameters}) {",
+      "\t\t${3:// code}",
+      "\t}",
+      "",
+      "\t${4:methodName}() {",
+      "\t\t${5:// code}",
+      "\t}",
+      "}"
+    ],
+    "language": "javascript"
+  },
+  "try-catch": {
+    "prefix": "try",
+    "description": "Try-catch block",
+    "body": [
+      "try {",
+      "\t${1:// code}",
+      "} catch (${2:error}) {",
+      "\t${3:// handle error}",
+      "}"
+    ],
+    "language": "javascript"
+  },
+  "map": {
+    "prefix": "map",
+    "description": "Array map",
+    "body": [
+      "${1:array}.map(${2:item} => ${3:return})"
+    ],
+    "language": "javascript"
+  },
+  "filter": {
+    "prefix": "filter",
+    "description": "Array filter",
+    "body": [
+      "${1:array}.filter(${2:item} => ${3:condition})"
+    ],
+    "language": "javascript"
+  },
+  "forEach": {
+    "prefix": "forEach",
+    "description": "Array forEach",
+    "body": [
+      "${1:array}.forEach(${2:item} => {",
+      "\t${3:// code}",
+      "});"
+    ],
+    "language": "javascript"
+  }
+}

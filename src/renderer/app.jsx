@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import Editor from './components/Editor';
 import FileExplorer from './components/FileExplorer';
@@ -9,7 +9,10 @@ import DeliberationChat from './components/DeliberationChat';
 import OutputModal from './components/OutputModal';
 import SaveDialog from './components/SaveDialog';
 import ShortcutHelp from './components/ShortcutHelp';
+import TerminalPanel from './components/Terminal';
+import SnippetPanel from './components/SnippetPanel';
 import { initializeShortcuts } from './utils/shortcuts';
+import snippetManager from './utils/snippets';
 import './styles/main.css';
 
 function App() {
@@ -29,6 +32,12 @@ function App() {
   const [lastSavedTimes, setLastSavedTimes] = useState({}); // Track last saved timestamps
   const [saveDialog, setSaveDialog] = useState({ isOpen: false, fileName: '', multiple: false, unsavedFiles: [] });
   const [recentFiles, setRecentFiles] = useState([]);
+  const [lspServers, setLspServers] = useState({}); // Track LSP server status
+  const [terminals, setTerminals] = useState([]); // Terminal instances
+  const [activeTerminalId, setActiveTerminalId] = useState(null); // Currently active terminal
+  const [showTerminal, setShowTerminal] = useState(false); // Terminal panel visibility
+  const [showSnippetPanel, setShowSnippetPanel] = useState(false); // Snippet panel visibility
+  const editorRef = useRef(null); // Editor ref for snippet insertion
 
   useEffect(() => {
     // Check LMStudio connection and load models
@@ -75,7 +84,9 @@ function App() {
       'save-as': handleSaveAs,
       'toggle-settings': () => setShowSettings(true),
       'show-shortcuts': () => setShowShortcuts(true),
-      'run-code': () => handleRunCode()
+      'run-code': () => handleRunCode(),
+      'toggle-terminal': handleToggleTerminal,
+      'toggle-snippets': () => setShowSnippetPanel(prev => !prev)
     };
 
     const shortcutsManager = initializeShortcuts(handlers);
@@ -84,6 +95,7 @@ function App() {
       shortcutsManager.disable();
       window.removeEventListener('check-unsaved-changes', handleUnsavedCheck);
       window.electronAPI.removeUnsavedChangesListener?.();
+      window.electronAPI.removeTerminalListeners?.();
     };
   }, [dirtyFiles, activeFile]);
 
@@ -118,6 +130,62 @@ function App() {
       'json': 'json'
     };
     setLanguage(langMap[ext] || 'javascript');
+
+    // Auto-start LSP server for TypeScript files
+    if (langMap[ext] === 'typescript' || langMap[ext] === 'javascript') {
+      startLanguageServer(langMap[ext]);
+    }
+  };
+
+  const startLanguageServer = async (language) => {
+    if (!window.electronAPI) {
+      console.error('Electron API not available');
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI.lspStart(language);
+      if (result.success) {
+        setLspServers(prev => ({
+          ...prev,
+          [language]: { status: 'connected', pid: result.pid }
+        }));
+      } else {
+        console.error('Failed to start LSP server:', result.error);
+        setLspServers(prev => ({
+          ...prev,
+          [language]: { status: 'error', error: result.error }
+        }));
+      }
+    } catch (error) {
+      console.error('Error starting LSP server:', error);
+      setLspServers(prev => ({
+        ...prev,
+        [language]: { status: 'error', error: error.message }
+      }));
+    }
+  };
+
+  const stopLanguageServer = async (language) => {
+    if (!window.electronAPI) {
+      console.error('Electron API not available');
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI.lspStop(language);
+      if (result.success) {
+        setLspServers(prev => {
+          const newServers = { ...prev };
+          delete newServers[language];
+          return newServers;
+        });
+      } else {
+        console.error('Failed to stop LSP server:', result.error);
+      }
+    } catch (error) {
+      console.error('Error stopping LSP server:', error);
+    }
   };
 
   const handleFileSave = async (filePath, content) => {
@@ -616,6 +684,23 @@ function App() {
     }
   };
 
+  const handleSnippetSelect = (snippet) => {
+    if (!activeFile) {
+      alert('Please open a file first to insert snippets');
+      return;
+    }
+    console.log('Snippet selected:', snippet);
+    // Snippet will be inserted via Editor component's internal handling
+  };
+
+  // Listen for menu actions
+  useEffect(() => {
+    if (projectPath && terminals.length === 0) {
+      // Auto-create terminal when project is opened
+      handleCreateTerminal();
+    }
+  }, [projectPath]);
+
   // Listen for menu actions
   useEffect(() => {
     const handleSaveRequest = () => handleSaveProject();
@@ -673,6 +758,7 @@ function App() {
                 onRun={handleRunCode}
                 isDirty={dirtyFiles[activeFile] || false}
                 onDirtyChange={(isDirty) => handleDirtyChange(activeFile, isDirty)}
+                onSnippetInsert={handleSnippetSelect}
               />
             ) : (
               <div className="welcome-screen">
@@ -708,6 +794,7 @@ function App() {
         activeFile={activeFile}
         isDirty={dirtyFiles[activeFile] || false}
         lastSaved={lastSavedTimes[activeFile]}
+        lspStatus={lspServers[language]?.status || 'disconnected'}
         onSettingsClick={() => setShowSettings(true)}
       />
       <Settings
@@ -734,6 +821,25 @@ function App() {
         onDontSave={handleSaveDialogDontSave}
         onCancel={handleSaveDialogCancel}
       />
+      {showTerminal && (
+        <TerminalPanel
+          terminals={terminals}
+          activeTerminalId={activeTerminalId}
+          onTerminalSelect={handleTerminalSelect}
+          onTerminalClose={handleTerminalClose}
+          onTerminalCreate={handleCreateTerminal}
+          electronAPI={window.electronAPI}
+        />
+      )}
+      {showSnippetPanel && (
+        <SnippetPanel
+          isOpen={showSnippetPanel}
+          onClose={() => setShowSnippetPanel(false)}
+          currentLanguage={language}
+          onSnippetSelect={handleSnippetSelect}
+          editorRef={editorRef}
+        />
+      )}
     </div>
   );
 }

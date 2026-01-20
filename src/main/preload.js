@@ -94,6 +94,40 @@ contextBridge.exposeInMainWorld('electronAPI', {
   clearCache: (model = null) =>
     ipcRenderer.invoke('clear-cache', model),
 
+  // Git integration IPC functions
+  gitStatus: () =>
+    ipcRenderer.invoke('git-status'),
+
+  gitCommit: (message, authorInfo) =>
+    ipcRenderer.invoke('git-commit', message, authorInfo),
+
+  gitPush: () =>
+    ipcRenderer.invoke('git-push'),
+
+  gitPull: () =>
+    ipcRenderer.invoke('git-pull'),
+
+  gitBranchList: () =>
+    ipcRenderer.invoke('git-branch-list'),
+
+  gitCheckout: (branchName) =>
+    ipcRenderer.invoke('git-checkout', branchName),
+
+  gitCreateBranch: (branchName) =>
+    ipcRenderer.invoke('git-create-branch', branchName),
+
+  gitHistory: (maxCount = 20) =>
+    ipcRenderer.invoke('git-history', maxCount),
+
+  gitDiff: (filePath) =>
+    ipcRenderer.invoke('git-diff', filePath),
+
+  gitInit: () =>
+    ipcRenderer.invoke('git-init'),
+
+  gitIsRepo: () =>
+    ipcRenderer.invoke('git-is-repo'),
+
   // Listen for real-time deliberation updates
   onDeliberationUpdate: (callback) => {
     ipcRenderer.on('deliberation-update', (event, message) => callback(message));
@@ -107,6 +141,60 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Remove unsaved changes check listener
   removeUnsavedChangesListener: () => {
     ipcRenderer.removeAllListeners('check-unsaved-changes');
-  }
+  },
+
+  // Terminal IPC functions
+  terminalCreate: (cwd = null) =>
+    ipcRenderer.invoke('terminal-create', cwd),
+
+  terminalInput: (terminalId, data) =>
+    ipcRenderer.invoke('terminal-input', terminalId, data),
+
+  terminalResize: (terminalId, cols, rows) =>
+    ipcRenderer.invoke('terminal-resize', terminalId, cols, rows),
+
+  terminalKill: (terminalId) =>
+    ipcRenderer.invoke('terminal-kill', terminalId),
+
+  terminalList: () =>
+    ipcRenderer.invoke('terminal-list'),
+
+  onTerminalData: (callback) => {
+    ipcRenderer.on('terminal-data', (event, message) => callback(event, message));
+  },
+
+  onTerminalClose: (callback) => {
+    ipcRenderer.on('terminal-exit', (event, message) => callback(event, message));
+  },
+
+  removeTerminalListeners: () => {
+    ipcRenderer.removeAllListeners('terminal-data');
+    ipcRenderer.removeAllListeners('terminal-exit');
+  },
+
+  // LSP IPC functions
+  lspStart: (language) =>
+    ipcRenderer.invoke('lsp-start', language),
+
+  lspStop: (language) =>
+    ipcRenderer.invoke('lsp-stop', language),
+
+  lspDiagnostics: (uri) =>
+    ipcRenderer.invoke('lsp-diagnostics', uri),
+
+  lspCompletion: (uri, position) =>
+    ipcRenderer.invoke('lsp-completion', uri, position),
+
+  lspHover: (uri, position) =>
+    ipcRenderer.invoke('lsp-hover', uri, position),
+
+  lspDefinition: (uri, position) =>
+    ipcRenderer.invoke('lsp-definition', uri, position),
+
+  lspGetStatus: (language) =>
+    ipcRenderer.invoke('lsp-get-status', language),
+
+  lspGetRunningServers: () =>
+    ipcRenderer.invoke('lsp-get-running-servers')
 });
 

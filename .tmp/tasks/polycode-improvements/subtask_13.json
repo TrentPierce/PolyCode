@@ -2,7 +2,7 @@
   "id": "polycode-improvements-13",
   "seq": "13",
   "title": "Code snippets system",
-  "status": "pending",
+  "status": "completed",
   "depends_on": [],
   "parallel": true,
   "context_files": [

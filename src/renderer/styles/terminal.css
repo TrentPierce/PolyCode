@@ -1,0 +1,205 @@
+.terminal-panel {
+  display: flex;
+  flex-direction: column;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  font-family: 'Consolas', 'Courier New', monospace;
+  height: 300px;
+  border-top: 1px solid #3e3e42;
+}
+
+.terminal-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #252526;
+  border-bottom: 1px solid #3e3e42;
+  padding: 0 8px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.terminal-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  overflow-x: auto;
+  flex: 1;
+}
+
+.terminal-tabs::-webkit-scrollbar {
+  height: 4px;
+}
+
+.terminal-tabs::-webkit-scrollbar-thumb {
+  background: #424242;
+  border-radius: 2px;
+}
+
+.terminal-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #2d2d30;
+  border: 1px solid #3e3e42;
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+  user-select: none;
+  transition: background 0.2s;
+}
+
+.terminal-tab:hover {
+  background: #353538;
+}
+
+.terminal-tab.active {
+  background: #1e1e1e;
+  border-bottom-color: #1e1e1e;
+}
+
+.terminal-tab-label {
+  flex: 1;
+}
+
+.terminal-tab-close {
+  background: none;
+  border: none;
+  color: #d4d4d4;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  opacity: 0.6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+  transition: opacity 0.2s, background 0.2s;
+}
+
+.terminal-tab-close:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.terminal-tab-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: #3e3e42;
+  border: none;
+  border-radius: 4px;
+  color: #d4d4d4;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  margin-left: 8px;
+  transition: background 0.2s;
+}
+
+.terminal-tab-add:hover {
+  background: #4e4e52;
+}
+
+.terminal-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.terminal-controls button {
+  padding: 4px 12px;
+  background: #3e3e42;
+  border: none;
+  border-radius: 2px;
+  color: #d4d4d4;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.terminal-controls button:hover {
+  background: #4e4e52;
+}
+
+.terminal-content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.terminal-container {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.terminal-container.active {
+  z-index: 1;
+}
+
+.terminal-container.hidden {
+  display: none;
+}
+
+.terminal-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #858585;
+  font-size: 14px;
+}
+
+.terminal-empty p {
+  margin: 4px 0;
+}
+
+/* xterm.js customizations */
+.xterm .xterm-viewport {
+  overflow-y: auto;
+}
+
+.xterm .xterm-viewport::-webkit-scrollbar {
+  width: 8px;
+}
+
+.xterm .xterm-viewport::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+.xterm .xterm-viewport::-webkit-scrollbar-thumb {
+  background: #424242;
+  border-radius: 4px;
+}
+
+.xterm .xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background: #4e4e52;
+}
+
+.xterm .xterm-screen {
+  padding: 4px;
+}
+
+/* Terminal resize handle */
+.terminal-panel-resize-handle {
+  height: 4px;
+  background: transparent;
+  cursor: ns-resize;
+  transition: background 0.2s;
+}
+
+.terminal-panel-resize-handle:hover {
+  background: #007acc;
+}

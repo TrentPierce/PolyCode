@@ -2,7 +2,7 @@
   "id": "polycode-improvements-12",
   "seq": "12",
   "title": "Terminal integration",
-  "status": "pending",
+  "status": "completed",
   "depends_on": [],
   "parallel": true,
   "context_files": [

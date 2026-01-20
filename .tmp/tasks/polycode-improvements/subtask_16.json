@@ -2,7 +2,7 @@
   "id": "polycode-improvements-16",
   "seq": "16",
   "title": "TypeScript migration setup",
-  "status": "pending",
+  "status": "completed",
   "depends_on": [],
   "parallel": true,
   "context_files": [

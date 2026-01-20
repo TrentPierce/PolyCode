@@ -6,11 +6,15 @@ import {
   setupAutoSave,
   AUTO_SAVE_CONFIG,
 } from '../utils/monaco-config';
+import { getLSPBridge, createLSPBridge } from '../utils/lsp-monaco-bridge';
+import snippetManager from '../utils/snippets';
 
-function Editor({ filePath, content, language, previousContent, onSave, onContentChange, onRun, isDirty, onDirtyChange }) {
+function Editor({ filePath, content, language, previousContent, onSave, onContentChange, onRun, isDirty, onDirtyChange, onSnippetInsert }) {
   const [editorContent, setEditorContent] = useState(content);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const [isFileDirty, setIsFileDirty] = useState(false);
+  const [lspStatus, setLspStatus] = useState('disconnected');
+  const [snippets, setSnippets] = useState([]);
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
   const decorationsRef = useRef([]);
@@ -20,6 +24,11 @@ function Editor({ filePath, content, language, previousContent, onSave, onConten
   const currentFilePathRef = useRef(filePath);
   const originalContentRef = useRef(content); // Track original content for dirty state
   const dirtyCheckTimeoutRef = useRef(null);
+  const lspBridgeRef = useRef(null);
+  const documentVersionRef = useRef(1);
+  const lspInitializedRef = useRef(false);
+  const snippetsLoadedRef = useRef(new Set());
+  const snippetInsertRef = useRef(null);
 
   useEffect(() => {
     // Reset typing flag when file changes
@@ -59,13 +68,126 @@ function Editor({ filePath, content, language, previousContent, onSave, onConten
     }
   }, [content, filePath, previousContent]);
 
-  // Cleanup effect for auto-save
+  // LSP initialization effect
+  useEffect(() => {
+    if (!editorRef.current || !monacoRef.current || !filePath || !language) {
+      return;
+    }
+
+    // Initialize LSP bridge if not already initialized
+    if (!lspBridgeRef.current) {
+      lspBridgeRef.current = createLSPBridge();
+    }
+
+    const bridge = lspBridgeRef.current;
+
+    // Initialize bridge with Monaco instance
+    bridge.initialize(monacoRef.current, editorRef.current, filePath, language);
+
+    // Register Monaco providers
+    const providers = [
+      bridge.registerDiagnosticsProvider(),
+      bridge.registerCompletionProvider(),
+      bridge.registerHoverProvider(),
+      bridge.registerDefinitionProvider()
+    ];
+
+    // Start language server if not already started
+    const startLSPServer = async () => {
+      if (!lspInitializedRef.current && window.electronAPI) {
+        try {
+          setLspStatus('starting');
+          const result = await window.electronAPI.lspStart(language);
+          if (result.success) {
+            setLspStatus('connected');
+            lspInitializedRef.current = true;
+
+            // Notify server about open document
+            await bridge.sendDidOpen();
+
+            // Trigger initial diagnostics
+            setTimeout(() => bridge.triggerDiagnostics(), 1000);
+          } else {
+            console.error('Failed to start LSP server:', result.error);
+            setLspStatus('error');
+          }
+        } catch (error) {
+          console.error('LSP initialization error:', error);
+          setLspStatus('error');
+        }
+      }
+    };
+
+    startLSPServer();
+
+    // Cleanup function
+    return () => {
+      // Dispose all providers
+      providers.forEach(disposable => {
+        if (disposable && disposable.dispose) {
+          disposable.dispose();
+        }
+      });
+
+      // Note: We don't stop LSP server here as it may be shared across files
+    };
+  }, [filePath, language]);
+
+  // Load snippets for current language
+  useEffect(() => {
+    if (!language) return;
+
+    // Check if snippets for this language are already loaded
+    if (snippetsLoadedRef.current.has(language)) {
+      return;
+    }
+
+    const loadLanguageSnippets = async () => {
+      try {
+        const languageSnippets = await snippetManager.loadSnippets(language);
+        setSnippets(languageSnippets);
+        snippetsLoadedRef.current.add(language);
+      } catch (error) {
+        console.error('Failed to load snippets:', error);
+      }
+    };
+
+    loadLanguageSnippets();
+  }, [language]);
+
+  const handleSnippetInsert = useCallback((snippet) => {
+    if (!editorRef.current || !snippet) return false;
+
+    try {
+      const success = snippetManager.insertSnippet(editorRef.current, snippet);
+      if (success && onSnippetInsert) {
+        onSnippetInsert(snippet);
+      }
+      return success;
+    } catch (error) {
+      console.error('Error inserting snippet:', error);
+      return false;
+    }
+  }, [onSnippetInsert]);
+
+  // Update snippet insert ref
+  useEffect(() => {
+    snippetInsertRef.current = handleSnippetInsert;
+  }, [handleSnippetInsert]);
+
+  // Cleanup effect for auto-save and LSP
   useEffect(() => {
     return () => {
       // Cleanup auto-save when component unmounts
       if (autoSaveCleanupRef.current) {
         autoSaveCleanupRef.current();
         autoSaveCleanupRef.current = null;
+      }
+
+      // Cleanup LSP bridge
+      if (lspBridgeRef.current) {
+        lspBridgeRef.current.dispose();
+        lspBridgeRef.current = null;
       }
     };
   }, []);
@@ -153,6 +275,54 @@ function Editor({ filePath, content, language, previousContent, onSave, onConten
       });
     }
 
+    // Add Ctrl+Space to trigger snippet completion
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Space, () => {
+      const position = editor.getPosition();
+      if (!position) return;
+
+      // Get current line content before cursor
+      const line = editor.getModel().getLineContent(position.lineNumber);
+      const beforeCursor = line.substring(0, position.column - 1);
+      const match = beforeCursor.match(/(\w+)$/);
+
+      if (match && match[1]) {
+        const prefix = match[1];
+        const matchingSnippets = snippets.filter(s =>
+          s.prefix && s.prefix.toLowerCase().startsWith(prefix.toLowerCase())
+        );
+
+        if (matchingSnippets.length > 0) {
+          // Find exact match first
+          const exactMatch = matchingSnippets.find(s => s.prefix.toLowerCase() === prefix.toLowerCase());
+          if (exactMatch) {
+            // Auto-expand exact match
+            handleSnippetInsert(exactMatch);
+          }
+        }
+      }
+    });
+
+    // Add Tab key handler for snippet expansion
+    editor.addCommand(monaco.KeyCode.Tab, () => {
+      const position = editor.getPosition();
+      if (!position) return;
+
+      // Get current line content before cursor
+      const line = editor.getModel().getLineContent(position.lineNumber);
+      const beforeCursor = line.substring(0, position.column - 1);
+      const match = beforeCursor.match(/(\w+)$/);
+
+      if (match && match[1]) {
+        const prefix = match[1];
+        const snippet = snippets.find(s => s.prefix === prefix);
+        if (snippet) {
+          handleSnippetInsert(snippet);
+          return true; // Prevent default tab behavior
+        }
+      }
+      return false; // Allow default tab behavior
+    });
+
     // Setup auto-save
     if (autoSaveEnabled) {
       autoSaveCleanupRef.current = setupAutoSave(
@@ -179,7 +349,7 @@ function Editor({ filePath, content, language, previousContent, onSave, onConten
     if (previousContent && previousContent !== content) {
       updateChangeDecorations(editor, monaco, previousContent, content);
     }
-  }, [autoSaveEnabled, content, filePath, onDirtyChange, onSave, onRun, previousContent]);
+  }, [autoSaveEnabled, content, filePath, onDirtyChange, onSave, onRun, previousContent, snippets]);
 
   const handleEditorChange = (value) => {
     const newValue = value || '';
@@ -197,6 +367,19 @@ function Editor({ filePath, content, language, previousContent, onSave, onConten
         onDirtyChange(isContentDirty);
       }
     }, 500);
+
+    // Notify LSP server about document change
+    if (lspBridgeRef.current && lspStatus === 'connected') {
+      documentVersionRef.current++;
+      const bridge = lspBridgeRef.current;
+      // Debounce LSP notifications
+      clearTimeout(handleEditorChange.lspTimeout);
+      handleEditorChange.lspTimeout = setTimeout(() => {
+        bridge.sendDidChange(documentVersionRef.current);
+        // Trigger diagnostics after change
+        setTimeout(() => bridge.triggerDiagnostics(), 500);
+      }, 300);
+    }
 
     // Notify parent of content changes (debounced to prevent excessive updates)
     if (onContentChange) {
@@ -227,6 +410,23 @@ function Editor({ filePath, content, language, previousContent, onSave, onConten
     }
   };
 
+  // Get LSP status icon and text
+  const getLSPStatusInfo = () => {
+    switch (lspStatus) {
+      case 'connected':
+        return { icon: '✓', text: 'LSP Connected', className: 'lsp-status-connected' };
+      case 'starting':
+        return { icon: '⟳', text: 'LSP Starting...', className: 'lsp-status-starting' };
+      case 'error':
+        return { icon: '✗', text: 'LSP Error', className: 'lsp-status-error' };
+      case 'disconnected':
+      default:
+        return { icon: '○', text: 'LSP Disconnected', className: 'lsp-status-disconnected' };
+    }
+  };
+
+  const lspStatusInfo = getLSPStatusInfo();
+
   return (
     <div className="editor-wrapper">
       <div className="editor-tabs">
@@ -247,6 +447,9 @@ function Editor({ filePath, content, language, previousContent, onSave, onConten
             ▶ Run
           </button>
         )}
+        <div className={`lsp-status-indicator ${lspStatusInfo.className}`} title={lspStatusInfo.text}>
+          {lspStatusInfo.icon} {lspStatusInfo.text}
+        </div>
       </div>
       <div className="monaco-editor-container">
         <MonacoEditor
@@ -259,6 +462,7 @@ function Editor({ filePath, content, language, previousContent, onSave, onConten
           options={getEditorOptions({
             // Preserve any specific overrides if needed
             language: language,
+            enableLSP: lspStatus === 'connected',
           })}
         />
       </div>

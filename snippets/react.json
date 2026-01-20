@@ -1,0 +1,360 @@
+{
+  "react functional component": {
+    "prefix": "rfc",
+    "description": "React Functional Component",
+    "body": [
+      "import React from 'react';",
+      "",
+      "function ${1:ComponentName}({ ${2:props} }) {",
+      "\treturn (",
+      "\t\t<div>",
+      "\t\t\t${3:// component content}",
+      "\t\t</div>",
+      "\t);",
+      "}",
+      "",
+      "export default ${1:ComponentName};"
+    ],
+    "language": "javascript"
+  },
+  "react functional component with hooks": {
+    "prefix": "rfch",
+    "description": "React Functional Component with Hooks",
+    "body": [
+      "import React, { useState, useEffect } from 'react';",
+      "",
+      "function ${1:ComponentName}({ ${2:props} }) {",
+      "\tconst [${3:state}, set${4:State}] = useState(${5:initialValue});",
+      "",
+      "\tuseEffect(() => {",
+      "\t\t${6:// side effect}",
+      "\t}, []);",
+      "",
+      "\treturn (",
+      "\t\t<div>",
+      "\t\t\t${7:// component content}",
+      "\t\t</div>",
+      "\t);",
+      "}",
+      "",
+      "export default ${1:ComponentName};"
+    ],
+    "language": "javascript"
+  },
+  "react arrow function component": {
+    "prefix": "raf",
+    "description": "React Arrow Function Component",
+    "body": [
+      "import React from 'react';",
+      "",
+      "const ${1:ComponentName} = ({ ${2:props} }) => {",
+      "\treturn (",
+      "\t\t<div>",
+      "\t\t\t${3:// component content}",
+      "\t\t</div>",
+      "\t);",
+      "};",
+      "",
+      "export default ${1:ComponentName};"
+    ],
+    "language": "javascript"
+  },
+  "react class component": {
+    "prefix": "rcc",
+    "description": "React Class Component",
+    "body": [
+      "import React, { Component } from 'react';",
+      "",
+      "class ${1:ComponentName} extends Component {",
+      "\tconstructor(props) {",
+      "\t\tsuper(props);",
+      "\t\tthis.state = {",
+      "\t\t\t${2:state}: ${3:value}",
+      "\t\t};",
+      "\t}",
+      "",
+      "\trender() {",
+      "\t\treturn (",
+      "\t\t\t<div>",
+      "\t\t\t\t${4:// component content}",
+      "\t\t\t</div>",
+      "\t\t);",
+      "\t}",
+      "}",
+      "",
+      "export default ${1:ComponentName};"
+    ],
+    "language": "javascript"
+  },
+  "useState": {
+    "prefix": "us",
+    "description": "React useState Hook",
+    "body": [
+      "const [${1:state}, set${2:State}] = useState(${3:initialValue});"
+    ],
+    "language": "javascript"
+  },
+  "useEffect": {
+    "prefix": "ue",
+    "description": "React useEffect Hook",
+    "body": [
+      "useEffect(() => {",
+      "\t${1:// side effect}",
+      "\t${2:return () => {",
+      "\t\t\t${3:// cleanup}",
+      "\t\t};}",
+      "}, [${4:dependencies}]);"
+    ],
+    "language": "javascript"
+  },
+  "useContext": {
+    "prefix": "ucon",
+    "description": "React useContext Hook",
+    "body": [
+      "const ${1:context} = useContext(${2:ContextProvider});"
+    ],
+    "language": "javascript"
+  },
+  "useRef": {
+    "prefix": "urf",
+    "description": "React useRef Hook",
+    "body": [
+      "const ${1:ref} = useRef(${2:initialValue});"
+    ],
+    "language": "javascript"
+  },
+  "useMemo": {
+    "prefix": "um",
+    "description": "React useMemo Hook",
+    "body": [
+      "const ${1:memoizedValue} = useMemo(() => {",
+      "\t${2:compute value}",
+      "}, [${3:dependencies}]);"
+    ],
+    "language": "javascript"
+  },
+  "useCallback": {
+    "prefix": "uc",
+    "description": "React useCallback Hook",
+    "body": [
+      "const ${1:callback} = useCallback(() => {",
+      "\t${2:code}",
+      "}, [${3:dependencies}]);"
+    ],
+    "language": "javascript"
+  },
+  "useReducer": {
+    "prefix": "ur",
+    "description": "React useReducer Hook",
+    "body": [
+      "const [${1:state}, dispatch] = useReducer(${2:reducer}, ${3:initialState}, ${4:init});"
+    ],
+    "language": "javascript"
+  },
+  "useLayoutEffect": {
+    "prefix": "ule",
+    "description": "React useLayoutEffect Hook",
+    "body": [
+      "useLayoutEffect(() => {",
+      "\t${1:// side effect}",
+      "}, [${2:dependencies}]);"
+    ],
+    "language": "javascript"
+  },
+  "fragment": {
+    "prefix": "<>",
+    "description": "React Fragment",
+    "body": [
+      "<>",
+      "\t${1:children}",
+      "</>"
+    ],
+    "language": "javascript"
+  },
+  "conditional rendering": {
+    "prefix": "cond",
+    "description": "Conditional Rendering",
+    "body": [
+      "{${1:condition} && (",
+      "\t<${2:Component} />",
+      ")}"
+    ],
+    "language": "javascript"
+  },
+  "ternary rendering": {
+    "prefix": "tern",
+    "description": "Ternary Rendering",
+    "body": [
+      "{${1:condition} ? (",
+      "\t<${2:Component} />",
+      ") : (",
+      "\t<${3:OtherComponent} />",
+      ")}"
+    ],
+    "language": "javascript"
+  },
+  "list rendering": {
+    "prefix": "list",
+    "description": "List Rendering",
+    "body": [
+      "{${1:array}.map((${2:item}, ${3:index}) => (",
+      "\t<${4:Component} key={${3:index}} ${5:props}={${2:item}} />",
+      "))}"
+    ],
+    "language": "javascript"
+  },
+  "onChange handler": {
+    "prefix": "onChange",
+    "description": "onChange Handler",
+    "body": [
+      "const handle${1:Name}Change = (e) => {",
+      "\tset${2:Name}(e.target.value);",
+      "};"
+    ],
+    "language": "javascript"
+  },
+  "onClick handler": {
+    "prefix": "onClick",
+    "description": "onClick Handler",
+    "body": [
+      "const handle${1:Name}Click = () => {",
+      "\t${2:// code}",
+      "};"
+    ],
+    "language": "javascript"
+  },
+  "onSubmit handler": {
+    "prefix": "onSubmit",
+    "description": "onSubmit Handler",
+    "body": [
+      "const handleSubmit = (e) => {",
+      "\te.preventDefault();",
+      "\t${2:// code}",
+      "};"
+    ],
+    "language": "javascript"
+  },
+  "controlled input": {
+    "prefix": "input",
+    "description": "Controlled Input",
+    "body": [
+      "<input",
+      "\ttype=\"${1:text}\"",
+      "\tvalue={${2:value}}",
+      "\tonChange={${3:onChange}}",
+      "\tplaceholder=\"${4:placeholder}\"",
+      "/>"
+    ],
+    "language": "javascript"
+  },
+  "controlled textarea": {
+    "prefix": "textarea",
+    "description": "Controlled Textarea",
+    "body": [
+      "<textarea",
+      "\tvalue={${1:value}}",
+      "\tonChange={${2:onChange}}",
+      "\tplaceholder=\"${3:placeholder}\"",
+      "/>"
+    ],
+    "language": "javascript"
+  },
+  "controlled select": {
+    "prefix": "select",
+    "description": "Controlled Select",
+    "body": [
+      "<select value={${1:value}} onChange={${2:onChange}}>",
+      "\t<option value=\"${3:option1}\">${4:Label 1}</option>",
+      "\t<option value=\"${5:option2}\">${6:Label 2}</option>",
+      "</select>"
+    ],
+    "language": "javascript"
+  },
+  "controlled checkbox": {
+    "prefix": "checkbox",
+    "description": "Controlled Checkbox",
+    "body": [
+      "<input",
+      "\ttype=\"checkbox\"",
+      "\tchecked={${1:checked}}",
+      "\tonChange={${2:onChange}}",
+      "/>"
+    ],
+    "language": "javascript"
+  },
+  "react memo": {
+    "prefix": "memo",
+    "description": "React.memo",
+    "body": [
+      "export default React.memo(function ${1:ComponentName}({ ${2:props} }) {",
+      "\treturn (",
+      "\t\t<div>",
+      "\t\t\t${3:// component content}",
+      "\t\t</div>",
+      "\t);",
+      "});"
+    ],
+    "language": "javascript"
+  },
+  "forward ref": {
+    "prefix": "forwardRef",
+    "description": "forwardRef",
+    "body": [
+      "const ${1:ComponentName} = React.forwardRef(({ ${2:props} }, ref) => {",
+      "\treturn (",
+      "\t\t<div ref={ref}>",
+      "\t\t\t${3:// component content}",
+      "\t\t</div>",
+      "\t);",
+      "});"
+    ],
+    "language": "javascript"
+  },
+  "custom hook": {
+    "prefix": "hook",
+    "description": "Custom Hook",
+    "body": [
+      "function use${1:HookName}(${2:parameters}) {",
+      "\tconst [${3:state}, set${4:State}] = useState(${5:initialValue});",
+      "",
+      "\t${6:// hook logic}",
+      "",
+      "\treturn { ${7:returnedValues} };",
+      "}",
+      "",
+      "export default use${1:HookName};"
+    ],
+    "language": "javascript"
+  },
+  "context provider": {
+    "prefix": "ctxp",
+    "description": "Context Provider",
+    "body": [
+      "const ${1:ContextName}Context = React.createContext();",
+      "",
+      "function ${1:ContextName}Provider({ children }) {",
+      "\tconst [${2:state}, set${3:State}] = useState(${4:initialValue});",
+      "",
+      "\tconst value = { ${2:state}, set${3:State} };",
+      "",
+      "\treturn (",
+      "\t\t<${1:ContextName}Context.Provider value={value}>",
+      "\t\t\t{children}",
+      "\t\t</${1:ContextName}Context.Provider>",
+      "\t);",
+      "}",
+      "",
+      "export default ${1:ContextName}Provider;",
+      "export { ${1:ContextName}Context };"
+    ],
+    "language": "javascript"
+  },
+  "context consumer": {
+    "prefix": "ctxc",
+    "description": "Context Consumer",
+    "body": [
+      "const { ${1:value}, ${2:setValue} } = useContext(${3:ContextName}Context);"
+    ],
+    "language": "javascript"
+  }
+}

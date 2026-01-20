@@ -5,6 +5,9 @@ const os = require('os');
 const { PolyCouncilOrchestrator } = require('./core/orchestrator');
 const { LMStudioClient } = require('./core/lmstudio-client');
 const { SettingsManager } = require('./core/settings');
+const { GitManager } = require('./core/git');
+const terminalManager = require('./core/terminal');
+const { initLSPManager, getLSPManager } = require('./core/lsp');
 const {
   validatePrompt,
   validateFilePath,
@@ -29,6 +32,7 @@ const { updateCacheConfig } = require('./core/cache');
 let mainWindow;
 let orchestrator;
 let settingsManager;
+let gitManager;
 let projectPath = null; // Current project folder path
 let allowWindowClose = false; // Flag to allow window close after confirmation
 
@@ -74,6 +78,12 @@ app.whenReady().then(async () => {
   settingsManager = new SettingsManager();
   const settings = settingsManager.getAllSettings();
 
+  // Initialize git manager
+  gitManager = new GitManager();
+
+  // Initialize LSP manager (will be configured when project is opened)
+  initLSPManager(null);
+
   // Create application menu
   createMenu();
 
@@ -85,12 +95,12 @@ app.whenReady().then(async () => {
     // Pass selected models from settings to orchestrator
     const selectedModels = settings.selectedModels || [];
     await orchestrator.initialize(selectedModels);
-    
+
     // If models were selected, configure them
     if (selectedModels.length > 0) {
       await orchestrator.configureModels({ models: selectedModels });
     }
-    
+
     console.log('PolyCouncil orchestrator initialized successfully');
   } catch (error) {
     console.error('Failed to initialize orchestrator:', error);
@@ -104,9 +114,17 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
+  // Cleanup all terminals before quitting
+  terminalManager.killAll();
+
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+app.on('before-quit', () => {
+  // Cleanup all terminals before quitting
+  terminalManager.killAll();
 });
 
 // IPC Handlers for AI operations
@@ -402,7 +420,7 @@ ipcMain.handle('new-project', async () => {
   }
 });
 
-ipcMain.handle('open-project', async () => {
+ ipcMain.handle('open-project', async () => {
   try {
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openDirectory'],
@@ -414,6 +432,13 @@ ipcMain.handle('open-project', async () => {
 
     if (!result.canceled && result.filePaths.length > 0) {
       projectPath = result.filePaths[0];
+
+      // Initialize git manager with project path
+      gitManager.initialize(projectPath);
+
+      // Initialize LSP manager with project path
+      initLSPManager(projectPath);
+
       // Load all files from the project folder
       const files = {};
       const loadFiles = (dir, basePath = '') => {
@@ -428,14 +453,14 @@ ipcMain.handle('open-project', async () => {
             // Normalize path separators to forward slashes for consistency
             const relativePath = basePath ? `${basePath}/${entry.name}` : entry.name;
             const normalizedPath = relativePath.replace(/\\/g, '/');
-            
+
             // Skip hidden files and common ignore patterns
-            if (entry.name.startsWith('.') || 
-                entry.name === 'node_modules' || 
+            if (entry.name.startsWith('.') ||
+                entry.name === 'node_modules' ||
                 entry.name === '.git') {
               return;
             }
-            
+
             if (entry.isDirectory()) {
               loadFiles(fullPath, relativePath);
             } else if (entry.isFile()) {
@@ -699,6 +724,359 @@ ipcMain.handle('get-project-path', async () => {
     }
   });
 
+// Git Integration IPC Handlers
+ipcMain.handle('git-status', async () => {
+  try {
+    if (!projectPath) {
+      return { success: false, error: 'No project folder opened' };
+    }
+    
+    const isRepo = await gitManager.isGitRepo();
+    if (!isRepo) {
+      return { 
+        success: true, 
+        isGitRepo: false,
+        branch: null,
+        changedFiles: [],
+        lastCommit: null
+      };
+    }
+
+    const status = await gitManager.getStatus();
+    const history = await gitManager.getHistory(1);
+    const lastCommit = history.commits.length > 0 ? history.commits[0] : null;
+
+    return {
+      success: true,
+      isGitRepo: true,
+      branch: status.current,
+      tracking: status.tracking,
+      changedFiles: status.files,
+      ahead: status.ahead,
+      behind: status.behind,
+      lastCommit
+    };
+  } catch (error) {
+    console.error('Error getting git status:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('git-commit', async (event, message, authorInfo = {}) => {
+  try {
+    if (!projectPath) {
+      return { success: false, error: 'No project folder opened' };
+    }
+
+    const result = await gitManager.commit(message, authorInfo);
+    
+    // Refresh status after commit
+    const status = await gitManager.getStatus();
+    const history = await gitManager.getHistory(1);
+    const lastCommit = history.commits.length > 0 ? history.commits[0] : null;
+
+    return {
+      success: true,
+      commit: result.commit,
+      branch: result.branch,
+      status: {
+        branch: status.current,
+        changedFiles: status.files,
+        lastCommit
+      }
+    };
+  } catch (error) {
+    console.error('Error committing:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('git-push', async () => {
+  try {
+    if (!projectPath) {
+      return { success: false, error: 'No project folder opened' };
+    }
+
+    const result = await gitManager.push();
+    
+    // Refresh status after push
+    const status = await gitManager.getStatus();
+
+    return {
+      success: true,
+      ...result,
+      status: {
+        branch: status.current,
+        ahead: status.ahead,
+        behind: status.behind
+      }
+    };
+  } catch (error) {
+    console.error('Error pushing:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('git-pull', async () => {
+  try {
+    if (!projectPath) {
+      return { success: false, error: 'No project folder opened' };
+    }
+
+    const result = await gitManager.pull();
+    
+    // Refresh status after pull
+    const status = await gitManager.getStatus();
+
+    return {
+      success: true,
+      ...result,
+      status: {
+        branch: status.current,
+        ahead: status.ahead,
+        behind: status.behind
+      }
+    };
+  } catch (error) {
+    console.error('Error pulling:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('git-branch-list', async () => {
+  try {
+    if (!projectPath) {
+      return { success: false, error: 'No project folder opened' };
+    }
+
+    const branches = await gitManager.getBranches();
+    
+    return {
+      success: true,
+      current: branches.current,
+      branches: branches.all
+    };
+  } catch (error) {
+    console.error('Error getting branches:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('git-checkout', async (event, branchName) => {
+  try {
+    if (!projectPath) {
+      return { success: false, error: 'No project folder opened' };
+    }
+
+    if (!branchName) {
+      return { success: false, error: 'Branch name is required' };
+    }
+
+    const result = await gitManager.checkout(branchName);
+    
+    // Refresh status after checkout
+    const status = await gitManager.getStatus();
+    const history = await gitManager.getHistory(1);
+    const lastCommit = history.commits.length > 0 ? history.commits[0] : null;
+
+    return {
+      success: true,
+      branch: result.branch,
+      status: {
+        branch: status.current,
+        changedFiles: status.files,
+        lastCommit
+      }
+    };
+  } catch (error) {
+    console.error('Error checking out branch:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('git-create-branch', async (event, branchName) => {
+  try {
+    if (!projectPath) {
+      return { success: false, error: 'No project folder opened' };
+    }
+
+    if (!branchName) {
+      return { success: false, error: 'Branch name is required' };
+    }
+
+    const result = await gitManager.createBranch(branchName);
+    
+    // Refresh status after creating branch
+    const status = await gitManager.getStatus();
+    const history = await gitManager.getHistory(1);
+    const lastCommit = history.commits.length > 0 ? history.commits[0] : null;
+
+    return {
+      success: true,
+      branch: result.branch,
+      status: {
+        branch: status.current,
+        changedFiles: status.files,
+        lastCommit
+      }
+    };
+  } catch (error) {
+    console.error('Error creating branch:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('git-history', async (event, maxCount = 20) => {
+  try {
+    if (!projectPath) {
+      return { success: false, error: 'No project folder opened' };
+    }
+
+    const history = await gitManager.getHistory(maxCount);
+    
+    return {
+      success: true,
+      commits: history.commits,
+      total: history.total
+    };
+  } catch (error) {
+    console.error('Error getting history:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('git-diff', async (event, filePath) => {
+  try {
+    if (!projectPath) {
+      return { success: false, error: 'No project folder opened' };
+    }
+
+    if (!filePath) {
+      return { success: false, error: 'File path is required' };
+    }
+
+    const diffResult = await gitManager.getDiff(filePath);
+    const parsedDiff = gitManager.parseDiff(diffResult.diff);
+    
+    return {
+      success: true,
+      filePath: diffResult.filePath,
+      diff: diffResult.diff,
+      hunks: parsedDiff.hunks,
+      summary: diffResult.summary
+    };
+  } catch (error) {
+    console.error('Error getting diff:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('git-init', async () => {
+  try {
+    if (!projectPath) {
+      return { success: false, error: 'No project folder opened' };
+    }
+
+    const result = await gitManager.init();
+    
+    // Refresh status after init
+    const status = await gitManager.getStatus();
+
+    return {
+      success: true,
+      path: result.path,
+      status: {
+        branch: status.current,
+        changedFiles: status.files
+      }
+    };
+  } catch (error) {
+    console.error('Error initializing git:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('git-is-repo', async () => {
+  try {
+    if (!projectPath) {
+      return { success: true, isRepo: false };
+    }
+
+    const isRepo = await gitManager.isGitRepo();
+    
+    return { success: true, isRepo };
+  } catch (error) {
+    console.error('Error checking git repo:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Terminal IPC Handlers
+ipcMain.handle('terminal-create', async (event, cwd = null) => {
+  try {
+    const workingDir = cwd || projectPath || os.homedir();
+    const result = terminalManager.spawnTerminal(workingDir);
+    return result;
+  } catch (error) {
+    console.error('Failed to create terminal:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('terminal-input', async (event, terminalId, data) => {
+  try {
+    const result = terminalManager.writeInput(terminalId, data);
+    return result;
+  } catch (error) {
+    console.error('Failed to write to terminal:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('terminal-resize', async (event, terminalId, cols, rows) => {
+  try {
+    const result = terminalManager.resizeTerminal(terminalId, cols, rows);
+    return result;
+  } catch (error) {
+    console.error('Failed to resize terminal:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('terminal-kill', async (event, terminalId) => {
+  try {
+    const result = terminalManager.killTerminal(terminalId);
+    return result;
+  } catch (error) {
+    console.error('Failed to kill terminal:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('terminal-list', async () => {
+  try {
+    const terminals = terminalManager.getTerminals();
+    return { success: true, terminals };
+  } catch (error) {
+    console.error('Failed to get terminal list:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Set up terminal data and exit callbacks to forward to renderer process
+terminalManager.onData((terminalId, data) => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('terminal-data', { terminalId, data });
+  }
+});
+
+terminalManager.onExit((terminalId, exitCode, signal) => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('terminal-exit', { terminalId, exitCode, signal });
+  }
+});
+
+
 ipcMain.handle('run-code', async (event, filePath, language, code) => {
   try {
     if (!projectPath) {
@@ -853,7 +1231,141 @@ ipcMain.handle('run-code', async (event, filePath, language, code) => {
       }
       default:
         return { success: false, error: `Language ${language} is not supported for execution` };
+  }
+});
+
+// LSP IPC Handlers
+ipcMain.handle('lsp-start', async (event, language) => {
+  try {
+    const lspManager = getLSPManager();
+    if (!lspManager) {
+      return { success: false, error: 'LSP manager not initialized' };
     }
+
+    const result = lspManager.startServer(language);
+    return result;
+  } catch (error) {
+    console.error('Failed to start LSP server:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('lsp-stop', async (event, language) => {
+  try {
+    const lspManager = getLSPManager();
+    if (!lspManager) {
+      return { success: false, error: 'LSP manager not initialized' };
+    }
+
+    const result = lspManager.stopServer(language);
+    return result;
+  } catch (error) {
+    console.error('Failed to stop LSP server:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('lsp-diagnostics', async (event, uri) => {
+  try {
+    const lspManager = getLSPManager();
+    if (!lspManager) {
+      return { success: false, error: 'LSP manager not initialized' };
+    }
+
+    // Extract language from URI or use default
+    const language = 'javascript'; // Default to JavaScript for now
+    const result = await lspManager.requestDiagnostics(language, uri);
+    return result;
+  } catch (error) {
+    console.error('Failed to get LSP diagnostics:', error);
+    return { success: false, error: error.message, diagnostics: [] };
+  }
+});
+
+ipcMain.handle('lsp-completion', async (event, uri, position) => {
+  try {
+    const lspManager = getLSPManager();
+    if (!lspManager) {
+      return { success: false, error: 'LSP manager not initialized', items: [] };
+    }
+
+    const language = 'javascript'; // Default to JavaScript for now
+    const result = await lspManager.requestCompletion(language, uri, position);
+    return result;
+  } catch (error) {
+    console.error('Failed to get LSP completions:', error);
+    return { success: false, error: error.message, items: [] };
+  }
+});
+
+ipcMain.handle('lsp-hover', async (event, uri, position) => {
+  try {
+    const lspManager = getLSPManager();
+    if (!lspManager) {
+      return { success: false, error: 'LSP manager not initialized', contents: null };
+    }
+
+    const language = 'javascript'; // Default to JavaScript for now
+    const result = await lspManager.requestHover(language, uri, position);
+    return result;
+  } catch (error) {
+    console.error('Failed to get LSP hover info:', error);
+    return { success: false, error: error.message, contents: null };
+  }
+});
+
+ipcMain.handle('lsp-definition', async (event, uri, position) => {
+  try {
+    const lspManager = getLSPManager();
+    if (!lspManager) {
+      return { success: false, error: 'LSP manager not initialized', location: null };
+    }
+
+    const language = 'javascript'; // Default to JavaScript for now
+    const result = await lspManager.requestDefinition(language, uri, position);
+    return result;
+  } catch (error) {
+    console.error('Failed to get LSP definition:', error);
+    return { success: false, error: error.message, location: null };
+  }
+});
+
+ipcMain.handle('lsp-get-status', async (event, language) => {
+  try {
+    const lspManager = getLSPManager();
+    if (!lspManager) {
+      return { success: false, status: 'not-initialized' };
+    }
+
+    const status = lspManager.getServerStatus(language);
+    return { success: true, status };
+  } catch (error) {
+    console.error('Failed to get LSP status:', error);
+    return { success: false, error: error.message, status: 'error' };
+  }
+});
+
+ipcMain.handle('lsp-get-running-servers', async () => {
+  try {
+    const lspManager = getLSPManager();
+    if (!lspManager) {
+      return { success: false, servers: [] };
+    }
+
+    const servers = lspManager.getRunningServers();
+    return { success: true, servers };
+  } catch (error) {
+    console.error('Failed to get running LSP servers:', error);
+    return { success: false, error: error.message, servers: [] };
+  }
+});
+
+// Clean up LSP servers on app quit
+app.on('before-quit', () => {
+  const lspManager = getLSPManager();
+  if (lspManager) {
+    lspManager.stopAll();
+  }
 });
 
 

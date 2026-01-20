@@ -1,0 +1,313 @@
+{
+  "console.log": {
+    "prefix": "clg",
+    "description": "Console log",
+    "body": [
+      "console.log(${1:message});"
+    ],
+    "language": "javascript"
+  },
+  "console.error": {
+    "prefix": "cle",
+    "description": "Console error",
+    "body": [
+      "console.error(${1:error});"
+    ],
+    "language": "javascript"
+  },
+  "console.warn": {
+    "prefix": "clw",
+    "description": "Console warning",
+    "body": [
+      "console.warn(${1:message});"
+    ],
+    "language": "javascript"
+  },
+  "function declaration": {
+    "prefix": "fn",
+    "description": "Function declaration",
+    "body": [
+      "function ${1:functionName}(${2:parameters}) {",
+      "\t${3:// code}",
+      "}"
+    ],
+    "language": "javascript"
+  },
+  "arrow function": {
+    "prefix": "af",
+    "description": "Arrow function",
+    "body": [
+      "const ${1:functionName} = (${2:parameters}) => {",
+      "\t${3:// code}",
+      "};"
+    ],
+    "language": "javascript"
+  },
+  "arrow function concise": {
+    "prefix": "afc",
+    "description": "Concise arrow function",
+    "body": [
+      "const ${1:functionName} = ${2:parameter} => ${3:return value};"
+    ],
+    "language": "javascript"
+  },
+  "class": {
+    "prefix": "class",
+    "description": "Class definition",
+    "body": [
+      "class ${1:ClassName} {",
+      "\tconstructor(${2:parameters}) {",
+      "\t\t${3:// code}",
+      "\t}",
+      "",
+      "\t${4:methodName}() {",
+      "\t\t${5:// code}",
+      "\t}",
+      "}"
+    ],
+    "language": "javascript"
+  },
+  "try-catch": {
+    "prefix": "try",
+    "description": "Try-catch block",
+    "body": [
+      "try {",
+      "\t${1:// code}",
+      "} catch (${2:error}) {",
+      "\t${3:// handle error}",
+      "}"
+    ],
+    "language": "javascript"
+  },
+  "try-catch-finally": {
+    "prefix": "tryf",
+    "description": "Try-catch-finally block",
+    "body": [
+      "try {",
+      "\t${1:// code}",
+      "} catch (${2:error}) {",
+      "\t${3:// handle error}",
+      "} finally {",
+      "\t${4:// cleanup}",
+      "}"
+    ],
+    "language": "javascript"
+  },
+  "map": {
+    "prefix": "map",
+    "description": "Array map",
+    "body": [
+      "${1:array}.map(${2:item} => ${3:return})"
+    ],
+    "language": "javascript"
+  },
+  "filter": {
+    "prefix": "filter",
+    "description": "Array filter",
+    "body": [
+      "${1:array}.filter(${2:item} => ${3:condition})"
+    ],
+    "language": "javascript"
+  },
+  "reduce": {
+    "prefix": "reduce",
+    "description": "Array reduce",
+    "body": [
+      "${1:array}.reduce((${2:acc}, ${3:item}) => {",
+      "\t${4:// code}",
+      "\treturn ${5:acc};",
+      "}, ${6:initialValue})"
+    ],
+    "language": "javascript"
+  },
+  "forEach": {
+    "prefix": "forEach",
+    "description": "Array forEach",
+    "body": [
+      "${1:array}.forEach(${2:item} => {",
+      "\t${3:// code}",
+      "});"
+    ],
+    "language": "javascript"
+  },
+  "find": {
+    "prefix": "find",
+    "description": "Array find",
+    "body": [
+      "${1:array}.find(${2:item} => ${3:condition})"
+    ],
+    "language": "javascript"
+  },
+  "Object.keys": {
+    "prefix": "ok",
+    "description": "Object keys",
+    "body": [
+      "Object.keys(${1:object})"
+    ],
+    "language": "javascript"
+  },
+  "Object.values": {
+    "prefix": "ov",
+    "description": "Object values",
+    "body": [
+      "Object.values(${1:object})"
+    ],
+    "language": "javascript"
+  },
+  "Object.entries": {
+    "prefix": "oe",
+    "description": "Object entries",
+    "body": [
+      "Object.entries(${1:object}).forEach(([${2:key}, ${3:value}]) => {",
+      "\t${4:// code}",
+      "});"
+    ],
+    "language": "javascript"
+  },
+  "template string": {
+    "prefix": "tpl",
+    "description": "Template string",
+    "body": [
+      "`${1:string} ${${2:expression}}`"
+    ],
+    "language": "javascript"
+  },
+  "destructuring object": {
+    "prefix": "do",
+    "description": "Destructuring object",
+    "body": [
+      "const { ${1:property1}, ${2:property2} } = ${3:object};"
+    ],
+    "language": "javascript"
+  },
+  "destructuring array": {
+    "prefix": "da",
+    "description": "Destructuring array",
+    "body": [
+      "const [${1:item1}, ${2:item2}] = ${3:array};"
+    ],
+    "language": "javascript"
+  },
+  "spread operator": {
+    "prefix": "spread",
+    "description": "Spread operator",
+    "body": [
+      "...${1:objectOrArray}"
+    ],
+    "language": "javascript"
+  },
+  "async function": {
+    "prefix": "async",
+    "description": "Async function",
+    "body": [
+      "async function ${1:functionName}(${2:parameters}) {",
+      "\t${3:// code}",
+      "}"
+    ],
+    "language": "javascript"
+  },
+  "async arrow function": {
+    "prefix": "asyncArrow",
+    "description": "Async arrow function",
+    "body": [
+      "const ${1:functionName} = async (${2:parameters}) => {",
+      "\t${3:// code}",
+      "};"
+    ],
+    "language": "javascript"
+  },
+  "await": {
+    "prefix": "await",
+    "description": "Await expression",
+    "body": [
+      "await ${1:promise}"
+    ],
+    "language": "javascript"
+  },
+  "promise": {
+    "prefix": "promise",
+    "description": "Promise",
+    "body": [
+      "new Promise((resolve, reject) => {",
+      "\t${1:// code}",
+      "});"
+    ],
+    "language": "javascript"
+  },
+  "setTimeout": {
+    "prefix": "setTimeout",
+    "description": "setTimeout",
+    "body": [
+      "setTimeout(() => {",
+      "\t${1:// code}",
+      "}, ${2:ms});"
+    ],
+    "language": "javascript"
+  },
+  "setInterval": {
+    "prefix": "setInterval",
+    "description": "setInterval",
+    "body": [
+      "setInterval(() => {",
+      "\t${1:// code}",
+      "}, ${2:ms});"
+    ],
+    "language": "javascript"
+  },
+  "export default": {
+    "prefix": "ed",
+    "description": "Export default",
+    "body": [
+      "export default ${1:name};"
+    ],
+    "language": "javascript"
+  },
+  "export named": {
+    "prefix": "en",
+    "description": "Export named",
+    "body": [
+      "export { ${1:name} };"
+    ],
+    "language": "javascript"
+  },
+  "import default": {
+    "prefix": "id",
+    "description": "Import default",
+    "body": [
+      "import ${1:name} from '${2:path}';"
+    ],
+    "language": "javascript"
+  },
+  "import named": {
+    "prefix": "in",
+    "description": "Import named",
+    "body": [
+      "import { ${1:name} } from '${2:path}';"
+    ],
+    "language": "javascript"
+  },
+  "import namespace": {
+    "prefix": "is",
+    "description": "Import namespace",
+    "body": [
+      "import * as ${1:name} from '${2:path}';"
+    ],
+    "language": "javascript"
+  },
+  "module.exports": {
+    "prefix": "me",
+    "description": "Module exports",
+    "body": [
+      "module.exports = ${1:value};"
+    ],
+    "language": "javascript"
+  },
+  "require": {
+    "prefix": "req",
+    "description": "Require",
+    "body": [
+      "const ${1:name} = require('${2:path}');"
+    ],
+    "language": "javascript"
+  }
+}

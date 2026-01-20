@@ -1,0 +1,96 @@
+{
+  "react functional component": {
+    "prefix": "rfc",
+    "description": "React Functional Component",
+    "body": [
+      "import React from 'react';",
+      "",
+      "function ${1:ComponentName}({ ${2:props} }) {",
+      "\treturn (",
+      "\t\t<div>",
+      "\t\t\t${3:// component content}",
+      "\t\t</div>",
+      "\t);",
+      "}",
+      "",
+      "export default ${1:ComponentName};"
+    ],
+    "language": "javascript"
+  },
+  "useState": {
+    "prefix": "us",
+    "description": "React useState Hook",
+    "body": [
+      "const [${1:state}, set${2:State}] = useState(${3:initialValue});"
+    ],
+    "language": "javascript"
+  },
+  "useEffect": {
+    "prefix": "ue",
+    "description": "React useEffect Hook",
+    "body": [
+      "useEffect(() => {",
+      "\t${1:// side effect}",
+      "}, [${2:dependencies}]);"
+    ],
+    "language": "javascript"
+  },
+  "useRef": {
+    "prefix": "urf",
+    "description": "React useRef Hook",
+    "body": [
+      "const ${1:ref} = useRef(${2:initialValue});"
+    ],
+    "language": "javascript"
+  },
+  "useMemo": {
+    "prefix": "um",
+    "description": "React useMemo Hook",
+    "body": [
+      "const ${1:memoizedValue} = useMemo(() => {",
+      "\t${2:compute value}",
+      "}, [${3:dependencies}]);"
+    ],
+    "language": "javascript"
+  },
+  "useCallback": {
+    "prefix": "uc",
+    "description": "React useCallback Hook",
+    "body": [
+      "const ${1:callback} = useCallback(() => {",
+      "\t${2:code}",
+      "}, [${3:dependencies}]);"
+    ],
+    "language": "javascript"
+  },
+  "fragment": {
+    "prefix": "<>",
+    "description": "React Fragment",
+    "body": [
+      "<>",
+      "\t${1:children}",
+      "</>"
+    ],
+    "language": "javascript"
+  },
+  "conditional rendering": {
+    "prefix": "cond",
+    "description": "Conditional Rendering",
+    "body": [
+      "{${1:condition} && (",
+      "\t<${2:Component} />",
+      ")}"
+    ],
+    "language": "javascript"
+  },
+  "list rendering": {
+    "prefix": "list",
+    "description": "List Rendering",
+    "body": [
+      "{${1:array}.map((${2:item}, ${3:index}) => (",
+      "\t<${4:Component} key={${3:index}} ${5:props}={${2:item}} />",
+      "))}"
+    ],
+    "language": "javascript"
+  }
+}

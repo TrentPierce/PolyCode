@@ -104,6 +104,9 @@ export const DEFAULT_EDITOR_OPTIONS = {
   // Accessibility
   accessibilitySupport: 'auto',
   unforcedLineHeight: 0,
+
+  // LSP integration
+  enableLSP: false,
 };
 
 /**

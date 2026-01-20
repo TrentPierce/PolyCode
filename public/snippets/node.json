@@ -1,0 +1,118 @@
+{
+  "express server": {
+    "prefix": "express",
+    "description": "Express HTTP Server",
+    "body": [
+      "const express = require('express');",
+      "const app = express();",
+      "const PORT = process.env.PORT || ${1:3000};",
+      "",
+      "// Middleware",
+      "app.use(express.json());",
+      "",
+      "// Routes",
+      "app.get('/', (req, res) => {",
+      "\tres.send('Hello World!');",
+      "});",
+      "",
+      "// Start server",
+      "app.listen(PORT, () => {",
+      "\tconsole.log(`Server running on port ${PORT}`);",
+      "});"
+    ],
+    "language": "javascript"
+  },
+  "express router": {
+    "prefix": "expressRouter",
+    "description": "Express Router",
+    "body": [
+      "const express = require('express');",
+      "const router = express.Router();",
+      "",
+      "router.get('/', (req, res) => {",
+      "\t${1:// code}",
+      "});",
+      "",
+      "router.post('/', (req, res) => {",
+      "\t${2:// code}",
+      "});",
+      "",
+      "module.exports = router;"
+    ],
+    "language": "javascript"
+  },
+  "fs.readFile": {
+    "prefix": "fsRead",
+    "description": "fs.readFile",
+    "body": [
+      "fs.readFile('${1:filePath}', 'utf8', (err, data) => {",
+      "\tif (err) {",
+      "\t\tconsole.error(err);",
+      "\t\treturn;",
+      "\t}",
+      "\tconsole.log(data);",
+      "});"
+    ],
+    "language": "javascript"
+  },
+  "fs.writeFile": {
+    "prefix": "fsWrite",
+    "description": "fs.writeFile",
+    "body": [
+      "fs.writeFile('${1:filePath}', '${2:content}', 'utf8', (err) => {",
+      "\tif (err) {",
+      "\t\tconsole.error(err);",
+      "\t\treturn;",
+      "\t}",
+      "\tconsole.log('File saved!');",
+      "});"
+    ],
+    "language": "javascript"
+  },
+  "event emitter": {
+    "prefix": "emitter",
+    "description": "EventEmitter",
+    "body": [
+      "const EventEmitter = require('events');",
+      "const emitter = new EventEmitter();"
+    ],
+    "language": "javascript"
+  },
+  "event emitter on": {
+    "prefix": "emitterOn",
+    "description": "EventEmitter on",
+    "body": [
+      "emitter.on('${1:eventName}', (${2:args}) => {",
+      "\t${3:// handle event}",
+      "});"
+    ],
+    "language": "javascript"
+  },
+  "readable stream": {
+    "prefix": "readableStream",
+    "description": "Readable Stream",
+    "body": [
+      "const readable = fs.createReadStream('${1:filePath}');",
+      "",
+      "readable.on('data', (chunk) => {",
+      "\tconsole.log('Received chunk:', chunk);",
+      "});",
+      "",
+      "readable.on('end', () => {",
+      "\tconsole.log('Stream finished');",
+      "});"
+    ],
+    "language": "javascript"
+  },
+  "pipe stream": {
+    "prefix": "pipe",
+    "description": "Pipe Stream",
+    "body": [
+      "const readable = fs.createReadStream('${1:inputPath}');",
+      "const writable = fs.createWriteStream('${2:outputPath}');",
+      "",
+      "readable.pipe(writable);"
+    ],
+    "language": "javascript"
+  }
+}

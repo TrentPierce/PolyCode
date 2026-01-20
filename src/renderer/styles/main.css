@@ -813,6 +813,35 @@
   display: inline-block;
 }
 
+/* LSP Status Indicator Styles */
+.lsp-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  background: #3c3c3c;
+  border-radius: 4px;
+  margin-right: 0.5rem;
+}
+
+.lsp-status-connected {
+  color: #4ec9b0;
+}
+
+.lsp-status-starting {
+  color: #dcdcaa;
+}
+
+.lsp-status-error {
+  color: #f14c4c;
+}
+
+.lsp-status-disconnected {
+  color: #858585;
+}
+
+
 
 /* Shortcut Help Modal */
 .shortcut-help-modal .modal-content {
@@ -904,4 +933,276 @@
   font-size: 0.85rem;
   color: #888;
   margin-right: 1rem;
+}
+
+/* SnippetPanel Styles */
+.snippet-panel {
+  width: 350px;
+  min-width: 300px;
+  max-width: 450px;
+  background: #252526;
+  border-left: 1px solid #3e3e42;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.snippet-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid #3e3e42;
+  background: #2d2d30;
+}
+
+.snippet-panel-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #4ec9b0;
+}
+
+.snippet-panel-close {
+  background: none;
+  border: none;
+  color: #858585;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.snippet-panel-close:hover {
+  background: #3e3e42;
+  color: #d4d4d4;
+}
+
+.snippet-panel-controls {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-bottom: 1px solid #3e3e42;
+  background: #1e1e1e;
+}
+
+.snippet-filter-input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  background: #3c3c3c;
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: #d4d4d4;
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+
+.snippet-filter-input:focus {
+  outline: none;
+  border-color: #007acc;
+}
+
+.snippet-language-select {
+  padding: 0.5rem 0.75rem;
+  background: #3c3c3c;
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: #d4d4d4;
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.snippet-language-select:focus {
+  outline: none;
+  border-color: #007acc;
+}
+
+.snippet-create-button {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.snippet-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+.snippet-empty {
+  padding: 2rem;
+  text-align: center;
+  color: #858585;
+  font-size: 0.9rem;
+}
+
+.snippet-item {
+  padding: 0.75rem;
+  background: #1e1e1e;
+  border: 1px solid #3e3e42;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.snippet-item:hover {
+  background: #2a2d2e;
+  border-color: #007acc;
+}
+
+.snippet-item.active {
+  background: #37373d;
+  border-color: #007acc;
+  box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.3);
+}
+
+.snippet-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.snippet-prefix {
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+  color: #4ec9b0;
+  font-size: 0.9rem;
+}
+
+.snippet-delete-button {
+  background: none;
+  border: none;
+  color: #f14c4c;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  transition: background 0.2s;
+  opacity: 0.6;
+}
+
+.snippet-delete-button:hover {
+  background: #3a1e1e;
+  opacity: 1;
+}
+
+.snippet-description {
+  color: #858585;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.snippet-preview {
+  border-top: 1px solid #3e3e42;
+  padding: 1rem;
+  background: #1e1e1e;
+  max-height: 40%;
+  overflow-y: auto;
+}
+
+.snippet-preview h3 {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.95rem;
+  color: #4ec9b0;
+}
+
+.snippet-preview-code {
+  background: #2d2d30;
+  border: 1px solid #3e3e42;
+  border-radius: 4px;
+  padding: 0.75rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.8rem;
+  color: #d4d4d4;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  margin: 0 0 0.75rem 0;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.snippet-insert-button {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 0.9rem;
+}
+
+/* Snippet Create Form Styles */
+.snippet-create-form {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.snippet-create-form h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  color: #4ec9b0;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.85rem;
+  color: #cccccc;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.6rem;
+  background: #1e1e1e;
+  border: 1px solid #3e3e42;
+  border-radius: 4px;
+  color: #d4d4d4;
+  font-family: inherit;
+  font-size: 0.85rem;
+  transition: border-color 0.2s;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: #007acc;
+}
+
+.snippet-body-textarea {
+  font-family: 'Courier New', monospace;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.form-hint {
+  display: block;
+  font-size: 0.75rem;
+  color: #858585;
+  margin-top: 0.25rem;
+}
+
+.snippet-form-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.snippet-form-actions .btn {
+  flex: 1;
 }

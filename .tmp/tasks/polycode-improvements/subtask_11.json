@@ -2,7 +2,7 @@
   "id": "polycode-improvements-11",
   "seq": "11",
   "title": "Git integration foundation",
-  "status": "pending",
+  "status": "completed",
   "depends_on": [],
   "parallel": true,
   "context_files": [

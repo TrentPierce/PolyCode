@@ -1,0 +1,490 @@
+{
+  "express server": {
+    "prefix": "express",
+    "description": "Express HTTP Server",
+    "body": [
+      "const express = require('express');",
+      "const app = express();",
+      "const PORT = process.env.PORT || ${1:3000};",
+      "",
+      "// Middleware",
+      "app.use(express.json());",
+      "app.use(express.urlencoded({ extended: true }));",
+      "",
+      "// Routes",
+      "app.get('/', (req, res) => {",
+      "\tres.send('Hello World!');",
+      "});",
+      "",
+      "// Start server",
+      "app.listen(PORT, () => {",
+      "\tconsole.log(`Server running on port ${PORT}`);",
+      "});"
+    ],
+    "language": "javascript"
+  },
+  "express router": {
+    "prefix": "expressRouter",
+    "description": "Express Router",
+    "body": [
+      "const express = require('express');",
+      "const router = express.Router();",
+      "",
+      "router.get('/', (req, res) => {",
+      "\t${1:// code}",
+      "});",
+      "",
+      "router.post('/', (req, res) => {",
+      "\t${2:// code}",
+      "});",
+      "",
+      "router.put('/:id', (req, res) => {",
+      "\t${3:// code}",
+      "});",
+      "",
+      "router.delete('/:id', (req, res) => {",
+      "\t${4:// code}",
+      "});",
+      "",
+      "module.exports = router;"
+    ],
+    "language": "javascript"
+  },
+  "express middleware": {
+    "prefix": "expressMiddleware",
+    "description": "Express Middleware",
+    "body": [
+      "const ${1:middlewareName} = (req, res, next) => {",
+      "\t${2:// middleware logic}",
+      "\tnext();",
+      "};"
+    ],
+    "language": "javascript"
+  },
+  "express error handler": {
+    "prefix": "expressError",
+    "description": "Express Error Handler",
+    "body": [
+      "app.use((err, req, res, next) => {",
+      "\tconsole.error(err.stack);",
+      "\tres.status(${1:500}).json({",
+      "\t\terror: err.message",
+      "\t});",
+      "});"
+    ],
+    "language": "javascript"
+  },
+  "koa server": {
+    "prefix": "koa",
+    "description": "Koa HTTP Server",
+    "body": [
+      "const Koa = require('koa');",
+      "const app = new Koa();",
+      "const PORT = ${1:3000};",
+      "",
+      "// Middleware",
+      "app.use(async (ctx) => {",
+      "\tctx.body = 'Hello World!';",
+      "});",
+      "",
+      "app.listen(PORT, () => {",
+      "\tconsole.log(`Server running on port ${PORT}`);",
+      "});"
+    ],
+    "language": "javascript"
+  },
+  "koa router": {
+    "prefix": "koaRouter",
+    "description": "Koa Router",
+    "body": [
+      "const Router = require('@koa/router');",
+      "const router = new Router();",
+      "",
+      "router.get('/', async (ctx) => {",
+      "\tctx.body = '${1:response}';",
+      "});",
+      "",
+      "router.post('/', async (ctx) => {",
+      "\tctx.body = '${2:response}';",
+      "});",
+      "",
+      "module.exports = router;"
+    ],
+    "language": "javascript"
+  },
+  "fastify server": {
+    "prefix": "fastify",
+    "description": "Fastify HTTP Server",
+    "body": [
+      "const fastify = require('fastify')({ logger: true });",
+      "const PORT = ${1:3000};",
+      "",
+      "fastify.get('/', async (request, reply) => {",
+      "\treturn { hello: 'world' };",
+      "});",
+      "",
+      "fastify.listen(PORT, (err) => {",
+      "\tif (err) {",
+      "\t\tfastify.log.error(err);",
+      "\t\tprocess.exit(1);",
+      "\t}",
+      "});"
+    ],
+    "language": "javascript"
+  },
+  "fs.readFile": {
+    "prefix": "fsRead",
+    "description": "fs.readFile",
+    "body": [
+      "fs.readFile('${1:filePath}', 'utf8', (err, data) => {",
+      "\tif (err) {",
+      "\t\tconsole.error(err);",
+      "\t\treturn;",
+      "\t}",
+      "\tconsole.log(data);",
+      "});"
+    ],
+    "language": "javascript"
+  },
+  "fs.readFile promise": {
+    "prefix": "fsReadPromise",
+    "description": "fs.promises.readFile",
+    "body": [
+      "const data = await fs.promises.readFile('${1:filePath}', 'utf8');"
+    ],
+    "language": "javascript"
+  },
+  "fs.writeFile": {
+    "prefix": "fsWrite",
+    "description": "fs.writeFile",
+    "body": [
+      "fs.writeFile('${1:filePath}', '${2:content}', 'utf8', (err) => {",
+      "\tif (err) {",
+      "\t\tconsole.error(err);",
+      "\t\treturn;",
+      "\t}",
+      "\tconsole.log('File saved!');",
+      "});"
+    ],
+    "language": "javascript"
+  },
+  "fs.writeFile promise": {
+    "prefix": "fsWritePromise",
+    "description": "fs.promises.writeFile",
+    "body": [
+      "await fs.promises.writeFile('${1:filePath}', '${2:content}', 'utf8');"
+    ],
+    "language": "javascript"
+  },
+  "fs.readdir": {
+    "prefix": "fsReaddir",
+    "description": "fs.readdir",
+    "body": [
+      "fs.readdir('${1:directory}', (err, files) => {",
+      "\tif (err) {",
+      "\t\tconsole.error(err);",
+      "\t\treturn;",
+      "\t}",
+      "\tconsole.log(files);",
+      "});"
+    ],
+    "language": "javascript"
+  },
+  "fs.mkdir": {
+    "prefix": "fsMkdir",
+    "description": "fs.mkdir",
+    "body": [
+      "fs.mkdir('${1:directory}', { recursive: true }, (err) => {",
+      "\tif (err) {",
+      "\t\tconsole.error(err);",
+      "\t\treturn;",
+      "\t}",
+      "\tconsole.log('Directory created!');",
+      "});"
+    ],
+    "language": "javascript"
+  },
+  "fs.unlink": {
+    "prefix": "fsUnlink",
+    "description": "fs.unlink",
+    "body": [
+      "fs.unlink('${1:filePath}', (err) => {",
+      "\tif (err) {",
+      "\t\tconsole.error(err);",
+      "\t\treturn;",
+      "\t}",
+      "\tconsole.log('File deleted!');"
+      "});"
+    ],
+    "language": "javascript"
+  },
+  "event emitter": {
+    "prefix": "emitter",
+    "description": "EventEmitter",
+    "body": [
+      "const EventEmitter = require('events');",
+      "const emitter = new EventEmitter();"
+    ],
+    "language": "javascript"
+  },
+  "event emitter on": {
+    "prefix": "emitterOn",
+    "description": "EventEmitter on",
+    "body": [
+      "emitter.on('${1:eventName}', (${2:args}) => {",
+      "\t${3:// handle event}",
+      "});"
+    ],
+    "language": "javascript"
+  },
+  "event emitter emit": {
+    "prefix": "emitterEmit",
+    "description": "EventEmitter emit",
+    "body": [
+      "emitter.emit('${1:eventName}', ${2:args});"
+    ],
+    "language": "javascript"
+  },
+  "event emitter once": {
+    "prefix": "emitterOnce",
+    "description": "EventEmitter once",
+    "body": [
+      "emitter.once('${1:eventName}', (${2:args}) => {",
+      "\t${3:// handle event}",
+      "});"
+    ],
+    "language": "javascript"
+  },
+  "readable stream": {
+    "prefix": "readableStream",
+    "description": "Readable Stream",
+    "body": [
+      "const readable = fs.createReadStream('${1:filePath}');",
+      "",
+      "readable.on('data', (chunk) => {",
+      "\tconsole.log('Received chunk:', chunk);",
+      "});",
+      "",
+      "readable.on('end', () => {",
+      "\tconsole.log('Stream finished');",
+      "});",
+      "",
+      "readable.on('error', (err) => {",
+      "\tconsole.error('Stream error:', err);",
+      "});"
+    ],
+    "language": "javascript"
+  },
+  "writable stream": {
+    "prefix": "writableStream",
+    "description": "Writable Stream",
+    "body": [
+      "const writable = fs.createWriteStream('${1:filePath}');",
+      "",
+      "writable.write('${1:content}');",
+      "writable.end();",
+      "",
+      "writable.on('finish', () => {",
+      "\tconsole.log('Write complete');",
+      "});",
+      "",
+      "writable.on('error', (err) => {",
+      "\tconsole.error('Write error:', err);",
+      "});"
+    ],
+    "language": "javascript"
+  },
+  "pipe stream": {
+    "prefix": "pipe",
+    "description": "Pipe Stream",
+    "body": [
+      "const readable = fs.createReadStream('${1:inputPath}');",
+      "const writable = fs.createWriteStream('${2:outputPath}');",
+      "",
+      "readable.pipe(writable);"
+    ],
+    "language": "javascript"
+  },
+  "mongoose schema": {
+    "prefix": "mongooseSchema",
+    "description": "Mongoose Schema",
+    "body": [
+      "const mongoose = require('mongoose');",
+      "",
+      "const ${1:ModelName}Schema = new mongoose.Schema({",
+      "\t${2:fieldName}: {",
+      "\t\ttype: ${3:String},",
+      "\t\trequired: true",
+      "\t}",
+      "}, { timestamps: true });",
+      "",
+      "const ${1:ModelName} = mongoose.model('${1:ModelName}', ${1:ModelName}Schema);",
+      "module.exports = ${1:ModelName};"
+    ],
+    "language": "javascript"
+  },
+  "mongoose model": {
+    "prefix": "mongooseModel",
+    "description": "Mongoose Model",
+    "body": [
+      "const ${1:ModelName} = mongoose.model('${1:ModelName}', ${2:schema});"
+    ],
+    "language": "javascript"
+  },
+  "mongoose find": {
+    "prefix": "mongooseFind",
+    "description": "Mongoose find",
+    "body": [
+      "const ${1:results} = await ${2:Model}.find({ ${3:query} });"
+    ],
+    "language": "javascript"
+  },
+  "mongoose create": {
+    "prefix": "mongooseCreate",
+    "description": "Mongoose create",
+    "body": [
+      "const ${1:newDoc} = await ${2:Model}.create({ ${3:data} });"
+    ],
+    "language": "javascript"
+  },
+  "mongoose update": {
+    "prefix": "mongooseUpdate",
+    "description": "Mongoose update",
+    "body": [
+      "const ${1:updated} = await ${2:Model}.findByIdAndUpdate(${3:id}, ${4:updates}, { new: true });"
+    ],
+    "language": "javascript"
+  },
+  "mongoose delete": {
+    "prefix": "mongooseDelete",
+    "description": "Mongoose delete",
+    "body": [
+      "await ${1:Model}.findByIdAndDelete(${2:id});"
+    ],
+    "language": "javascript"
+  },
+  "sequelize model": {
+    "prefix": "sequelizeModel",
+    "description": "Sequelize Model",
+    "body": [
+      "const { DataTypes } = require('sequelize');",
+      "const sequelize = require('../config/database');",
+      "",
+      "const ${1:ModelName} = sequelize.define('${1:ModelName}', {",
+      "\t${2:fieldName}: {",
+      "\t\ttype: DataTypes.${3:STRING},",
+      "\t\tallowNull: false",
+      "\t}",
+      "});",
+      "",
+      "module.exports = ${1:ModelName};"
+    ],
+    "language": "javascript"
+  },
+  "sequelize find": {
+    "prefix": "sequelizeFind",
+    "description": "Sequelize find",
+    "body": [
+      "const ${1:results} = await ${2:Model}.findAll({",
+      "\twhere: { ${3:query} }",
+      "});"
+    ],
+    "language": "javascript"
+  },
+  "sequelize create": {
+    "prefix": "sequelizeCreate",
+    "description": "Sequelize create",
+    "body": [
+      "const ${1:newDoc} = await ${2:Model}.create({ ${3:data} });"
+    ],
+    "language": "javascript"
+  },
+  "sequelize update": {
+    "prefix": "sequelizeUpdate",
+    "description": "Sequelize update",
+    "body": [
+      "await ${2:Model}.update(${3:updates}, {",
+      "\twhere: { id: ${1:id} }",
+      "});"
+    ],
+    "language": "javascript"
+  },
+  "sequelize delete": {
+    "prefix": "sequelizeDelete",
+    "description": "Sequelize delete",
+    "body": [
+      "await ${2:Model}.destroy({",
+      "\twhere: { id: ${1:id} }",
+      "\t});"
+    ],
+    "language": "javascript"
+  },
+  "http request": {
+    "prefix": "https",
+    "description": "HTTP Request",
+    "body": [
+      "https.get('${1:url}', (res) => {",
+      "\tlet data = '';",
+      "",
+      "\tres.on('data', (chunk) => {",
+      "\t\tdata += chunk;",
+      "\t});",
+      "",
+      "\tres.on('end', () => {",
+      "\t\tconsole.log(JSON.parse(data));",
+      "\t});",
+      "}).on('error', (err) => {",
+      "\tconsole.error('Error:', err.message);",
+      "});"
+    ],
+    "language": "javascript"
+  },
+  "http server": {
+    "prefix": "httpServer",
+    "description": "HTTP Server",
+    "body": [
+      "const http = require('http');",
+      "const PORT = ${1:3000};",
+      "",
+      "const server = http.createServer((req, res) => {",
+      "\tres.statusCode = 200;",
+      "\tres.setHeader('Content-Type', 'text/plain');",
+      "\tres.end('Hello World!');",
+      "});",
+      "",
+      "server.listen(PORT, () => {",
+      "\tconsole.log(`Server running at http://localhost:${PORT}/`);",
+      "});"
+    ],
+    "language": "javascript"
+  },
+  "path join": {
+    "prefix": "pathJoin",
+    "description": "Path Join",
+    "body": [
+      "const path = require('path');",
+      "const fullPath = path.join(${1:dir1}, ${2:dir2}, ${3:filename});"
+    ],
+    "language": "javascript"
+  },
+  "path resolve": {
+    "prefix": "pathResolve",
+    "description": "Path Resolve",
+    "body": [
+      "const path = require('path');",
+      "const fullPath = path.resolve(${1:__dirname}, ${2:relativePath});"
+    ],
+    "language": "javascript"
+  },
+  "module exports": {
+    "prefix": "moduleExports",
+    "description": "Module Exports Object",
+    "body": [
+      "module.exports = {",
+      "\t${1:functionName},",
+      "\t${2:anotherFunction}",
+      "};"
+    ],
+    "language": "javascript"
+  }
+}
