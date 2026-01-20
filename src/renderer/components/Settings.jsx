@@ -5,9 +5,10 @@ function Settings({ isOpen, onClose }) {
   // Select state from store
   const settings = useStore(state => state.settings);
   const showSettings = useStore(state => state.ui.showSettings);
-
+  
   // Select actions from store
   const setLmstudioUrl = useStore(state => state.setLmstudioUrl);
+  const setLmstudioPort = useStore(state => state.setLmstudioPort);
   const setSelectedModels = useStore(state => state.setSelectedModels);
 
   // Local component state
@@ -49,13 +50,20 @@ function Settings({ isOpen, onClose }) {
     setSaving(true);
     setError(null);
     setTestResult(null);
-
+    
     try {
-      // Validate URL format
-      try {
-        new URL(settings.lmstudioUrl);
-      } catch {
-        setError('Invalid URL format. Please use format: http://hostname:port');
+      // Validate URL format (hostname only, port separate)
+      const urlPattern = /^https?:\/\/[^:\/]+$/;
+      if (!urlPattern.test(settings.lmstudioUrl)) {
+        setError('Invalid URL format. Please use format: http://hostname (without port)');
+        setSaving(false);
+        return;
+      }
+
+      // Validate port format (number)
+      const port = parseInt(settings.lmstudioPort, 10);
+      if (isNaN(port) || port < 1 || port > 65535) {
+        setError('Invalid port number. Please enter a value between 1 and 65535');
         setSaving(false);
         return;
       }
@@ -80,18 +88,33 @@ function Settings({ isOpen, onClose }) {
     const loading = true;
     setError(null);
     setTestResult(null);
-
+    
     try {
-      // Validate URL format
-      try {
-        new URL(settings.lmstudioUrl);
-      } catch {
-        setError('Invalid URL format. Please use format: http://hostname:port');
+      // Construct full URL from hostname and port
+      const { lmstudioUrl, lmstudioPort } = settings;
+      const urlPattern = /^https?:\/\/[^:\/]+$/;
+      
+      // Validate hostname (URL without port)
+      if (!urlPattern.test(lmstudioUrl)) {
+        setError('Invalid URL format. Please use format: http://hostname (without port)');
         setLoadingModels(false);
         return;
       }
 
-      const result = await window.electronAPI.testConnection(settings.lmstudioUrl);
+      // Validate port format
+      const port = parseInt(lmstudioPort, 10);
+      if (isNaN(port) || port < 1 || port > 65535) {
+        setError('Invalid port number. Please enter a value between 1 and 65535');
+        setLoadingModels(false);
+        return;
+      }
+
+      // Build full URL with port if specified
+      const fullUrl = port && port !== '1234' 
+        ? `${lmstudioUrl.replace(/\/$/, '')}:${port}` 
+        : lmstudioUrl;
+
+      const result = await window.electronAPI.testConnection(fullUrl);
       if (result.success) {
         if (result.connected) {
           setTestResult({ success: true, message: 'Connection successful! LMStudio is accessible.' });
@@ -121,7 +144,7 @@ function Settings({ isOpen, onClose }) {
         <div className="settings-content">
           <div className="settings-section">
             <h3>LMStudio Configuration</h3>
-
+            
             <div className="settings-field">
               <label htmlFor="lmstudio-url">LMStudio API URL</label>
               <input
@@ -129,11 +152,26 @@ function Settings({ isOpen, onClose }) {
                 type="text"
                 value={settings.lmstudioUrl}
                 onChange={(e) => setLmstudioUrl(e.target.value)}
-                placeholder="http://localhost:1234"
+                placeholder="http://localhost"
                 disabled={saving}
               />
               <p className="settings-hint">
-                Enter the URL where LMStudio API server is running (e.g., http://localhost:1234 or http://192.168.1.100:1234)
+                Hostname or IP address (e.g., localhost, 192.168.1.100)
+              </p>
+            </div>
+
+            <div className="settings-field">
+              <label htmlFor="lmstudio-port">LMStudio Port</label>
+              <input
+                id="lmstudio-port"
+                type="text"
+                value={settings.lmstudioPort}
+                onChange={(e) => setLmstudioPort(e.target.value)}
+                placeholder="1234"
+                disabled={saving}
+              />
+              <p className="settings-hint">
+                Port number (default: 1234)
               </p>
             </div>
 

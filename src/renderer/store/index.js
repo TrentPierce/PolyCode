@@ -40,6 +40,7 @@ const getInitialState = () => {
       },
       autoSaveInterval: 30000, // 30 seconds
       lmstudioUrl: 'http://localhost:1234',
+      lmstudioPort: '1234',
       selectedModels: []
     },
 
@@ -160,11 +161,8 @@ const debouncedSave = (state) => {
 // Action types (for consistency and to avoid typos)
 export const ActionTypes = {
   // Settings
-  SET_THEME: 'SET_THEME',
-  SET_LANGUAGE: 'SET_LANGUAGE',
-  SET_EDITOR_CONFIG: 'SET_EDITOR_CONFIG',
-  SET_AUTO_SAVE_INTERVAL: 'SET_AUTO_SAVE_INTERVAL',
   SET_LMSTUDIO_URL: 'SET_LMSTUDIO_URL',
+  SET_LMSTUDIO_PORT: 'SET_LMSTUDIO_PORT',
   SET_SELECTED_MODELS: 'SET_SELECTED_MODELS',
   RESET_SETTINGS: 'RESET_SETTINGS',
 

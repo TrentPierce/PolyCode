@@ -32,6 +32,11 @@ export const setLmstudioUrl = (url) => {
   return ActionTypes.SET_LMSTUDIO_URL;
 };
 
+export const setLmstudioPort = (port) => {
+  useStore.getState().setLmstudioPort(port);
+  return ActionTypes.SET_LMSTUDIO_PORT;
+};
+
 export const setSelectedModels = (models) => {
   useStore.getState().setSelectedModels(models);
   return ActionTypes.SET_SELECTED_MODELS;

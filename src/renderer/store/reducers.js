@@ -55,6 +55,15 @@ export const settingsReducer = (state, action) => {
         }
       };
 
+    case ActionTypes.SET_LMSTUDIO_PORT:
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          lmstudioPort: action.payload
+        }
+      };
+
     case ActionTypes.SET_SELECTED_MODELS:
       return {
         ...state,
