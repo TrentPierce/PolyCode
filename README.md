@@ -2,7 +2,7 @@
 
 > **⚠️ ALPHA STATE WARNING**: This application is currently in active development (Alpha). Many features typically found in mature IDEs may be incomplete, unstable, or missing. Not all features work as expected. Use with caution.
 
-![PolyCode IDE Interface](assets/screenshot.png)
+![PolyCode IDE Interface](screenshot.png)
 
 AI-Powered IDE with Multi-Model Deliberation Architecture
 
