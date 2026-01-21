@@ -92,6 +92,9 @@ function App() {
   const [debugWatchExpressions, setDebugWatchExpressions] = useState([]);
   const [showDebugPanel, setShowDebugPanel] = useState(false);
 
+  // Local state for quality metrics panel (store only has toggle, not setter)
+  const [localShowQualityMetrics, setLocalShowQualityMetrics] = useState(false);
+
   useEffect(() => {
     logger.info('App component mounted');
 
@@ -189,11 +192,11 @@ function App() {
       'open-file': handleOpenProject,
       'save-file': handleSaveProject,
       'save-as': handleSaveAs,
-      'toggle-settings': () => setShowSettings(true),
+      'toggle-settings': () => setShowSettingsAction(true),
       'show-shortcuts': () => setShowShortcuts(true),
       'run-code': () => handleRunCode(),
       'toggle-terminal': handleToggleTerminal,
-      'toggle-snippets': () => setShowSnippetPanel(prev => !prev)
+      'toggle-snippets': () => toggleSnippetPanelAction()
     };
 
     const shortcutsManager = initializeShortcuts(handlers);
@@ -214,18 +217,18 @@ function App() {
       const result = await window.electronAPI.getModels();
       if (result.success) {
         setModels(result.data);
-        setIsConnected(true);
+        setAiConnected(true);
       } else {
-        setIsConnected(false);
+        setAiConnected(false);
       }
     } catch (error) {
-      setIsConnected(false);
+      setAiConnected(false);
     }
   };
 
   const handleFileSelect = (filePath, content) => {
     logger.info('File selected', { filePath });
-    setActiveFile(filePath);
+    setActiveFileAction(filePath);
     const ext = filePath.split('.').pop();
     const langMap = {
       'js': 'javascript',
@@ -304,7 +307,7 @@ function App() {
       const result = await window.electronAPI.rubricEvaluate(code, language, {});
       if (result.success) {
         setEvaluationData(result);
-        setShowQualityMetrics(true);
+        setLocalShowQualityMetrics(true);
         // Reload history to get the new entry
         loadEvaluationHistory();
       } else {
@@ -544,28 +547,19 @@ function App() {
   };
 
   const handleFileSave = async (filePath, content) => {
-    // Update local state
-    setFiles(prev => ({
-      ...prev,
-      [filePath]: content
-    }));
+    // Update file content in store
+    setFileContentsAction({ [filePath]: content });
 
     // If we have a project path, save to disk
     if (projectPath) {
       try {
         const result = await window.electronAPI.saveFile(filePath, content);
         if (result.success) {
-          // Update dirty state
-          setDirtyFiles(prev => ({
-            ...prev,
-            [filePath]: false
-          }));
+          // Clear dirty state
+          markUnsavedAction(filePath, false);
 
-          // Update last saved time
-          setLastSavedTimes(prev => ({
-            ...prev,
-            [filePath]: new Date().toISOString()
-          }));
+          // Save file in store (this updates lastSavedTimes internally)
+          saveFileAction(filePath, content);
 
           // Add to recent files
           const fullPath = result.path;
@@ -578,10 +572,7 @@ function App() {
   };
 
   const handleDirtyChange = (filePath, isDirty) => {
-    setDirtyFiles(prev => ({
-      ...prev,
-      [filePath]: isDirty
-    }));
+    markUnsavedAction(filePath, isDirty);
   };
 
   const handleSaveAs = async () => {
@@ -607,7 +598,7 @@ function App() {
   };
 
   const handleSaveDialogSave = async () => {
-    setSaveDialog({ isOpen: false, fileName: '', multiple: false, unsavedFiles: [] });
+    setSaveDialogAction({ isOpen: false, fileName: '', multiple: false, unsavedFiles: [] });
 
     const unsavedFiles = saveDialog.unsavedFiles.length > 0
       ? saveDialog.unsavedFiles
@@ -617,14 +608,8 @@ function App() {
     for (const filePath of unsavedFiles) {
       const content = files[filePath] || '';
       await window.electronAPI.saveFile(filePath, content);
-      setDirtyFiles(prev => ({
-        ...prev,
-        [filePath]: false
-      }));
-      setLastSavedTimes(prev => ({
-        ...prev,
-        [filePath]: new Date().toISOString()
-      }));
+      markUnsavedAction(filePath, false);
+      saveFileAction(filePath, content);
     }
 
     // Allow window close after saving
@@ -632,38 +617,31 @@ function App() {
   };
 
   const handleSaveDialogDontSave = () => {
-    setSaveDialog({ isOpen: false, fileName: '', multiple: false, unsavedFiles: [] });
+    setSaveDialogAction({ isOpen: false, fileName: '', multiple: false, unsavedFiles: [] });
     // Allow window close without saving
     window.electronAPI.allowWindowClose();
   };
 
   const handleSaveDialogCancel = () => {
-    setSaveDialog({ isOpen: false, fileName: '', multiple: false, unsavedFiles: [] });
+    setSaveDialogAction({ isOpen: false, fileName: '', multiple: false, unsavedFiles: [] });
     // Cancel window close
     window.electronAPI.cancelWindowClose();
   };
 
   const handleFileCreate = (filePath) => {
-    setFiles(prev => ({
-      ...prev,
-      [filePath]: ''
-    }));
-    setActiveFile(filePath);
+    createFileAction(filePath);
+    setActiveFileAction(filePath);
   };
 
   const handleFileDelete = async (filePath) => {
     try {
       const result = await window.electronAPI.deleteFile(filePath);
       if (result.success) {
-        setFiles(prev => {
-          const newFiles = { ...prev };
-          delete newFiles[filePath];
-          return newFiles;
-        });
+        deleteFileAction(filePath);
 
         // Clear active file if it was deleted
         if (activeFile === filePath) {
-          setActiveFile(null);
+          setActiveFileAction(null);
         }
       } else {
         alert(`Failed to delete file: ${result.error}`);
@@ -677,21 +655,11 @@ function App() {
     try {
       const result = await window.electronAPI.renameFile(oldPath, newPath);
       if (result.success) {
-        setFiles(prev => {
-          const newFiles = {};
-          Object.entries(prev).forEach(([path, content]) => {
-            if (path === oldPath) {
-              newFiles[newPath] = content;
-            } else {
-              newFiles[path] = content;
-            }
-          });
-          return newFiles;
-        });
+        renameFileAction(oldPath, newPath);
 
         // Update active file if needed
         if (activeFile === oldPath) {
-          setActiveFile(newPath);
+          setActiveFileAction(newPath);
         }
       } else {
         alert(`Failed to rename file: ${result.error}`);
@@ -711,7 +679,7 @@ function App() {
       if (projectPath) {
         const openResult = await window.electronAPI.openProject();
         if (openResult.success) {
-          setFiles(openResult.files);
+          setFileContentsAction(openResult.files);
         }
       }
     } catch (error) {
@@ -720,7 +688,7 @@ function App() {
   };
 
   const handleFilesUpdate = (updatedFiles) => {
-    setFiles(updatedFiles);
+    setFileContentsAction(updatedFiles);
   };
 
   const detectLanguageFromPrompt = (prompt, generatedCode) => {
@@ -790,11 +758,11 @@ function App() {
         newFiles[fileName] = content;
       });
       
-      setFiles(prev => ({
-        ...prev,
+      setFileContentsAction({
+        ...files,
         ...newFiles
-      }));
-      
+      });
+
       // Open the first file (usually index.html for websites)
       const firstFile = Object.keys(newFiles)[0];
       if (firstFile) {
@@ -810,7 +778,7 @@ function App() {
           'c': 'c'
         };
         setLanguage(langMap[ext] || 'javascript');
-        setActiveFile(firstFile);
+        setActiveFileAction(firstFile);
       }
       
       // Auto-save all files to project folder
@@ -860,11 +828,11 @@ function App() {
         }));
       }
       
-      setFiles(prev => ({
-        ...prev,
+      setFileContentsAction({
+        ...files,
         [fileName]: generatedCode
-      }));
-      setActiveFile(fileName);
+      });
+      setActiveFileAction(fileName);
       
       // Auto-save to project folder if project is open
       if (projectPath) {
@@ -889,10 +857,10 @@ function App() {
       }));
     }
     
-    setFiles(prev => ({
-      ...prev,
+    setFileContentsAction({
+      ...files,
       [filePath]: content
-    }));
+    });
   };
 
   const handleNewProject = async () => {
@@ -901,14 +869,14 @@ function App() {
       setProjectPath(result.path);
       // Load existing files if any
       if (result.files && Object.keys(result.files).length > 0) {
-        setFiles(result.files);
+        setFileContentsAction(result.files);
         const firstFile = Object.keys(result.files)[0];
         if (firstFile) {
           handleFileSelect(firstFile, result.files[firstFile]);
         }
       } else {
-        setFiles({});
-        setActiveFile(null);
+        setFileContentsAction({});
+        setActiveFileAction(null);
       }
     }
   };
@@ -921,7 +889,7 @@ function App() {
       setProjectPath(result.path);
       if (result.files && Object.keys(result.files).length > 0) {
         logger.info(`Loaded ${Object.keys(result.files).length} files from project`);
-        setFiles(result.files);
+        setFileContentsAction(result.files);
         // Open first file if available
         const firstFile = Object.keys(result.files)[0];
         if (firstFile) {
@@ -929,7 +897,7 @@ function App() {
         }
       } else {
         logger.warn('No files found in project folder', { path: result.path });
-        setFiles({});
+        setFileContentsAction({});
       }
     } else if (!result.cancelled) {
       logger.error('Failed to open project', { error: result.error });
@@ -975,10 +943,10 @@ function App() {
 
     // Update files state with the latest content from editor
     if (editorContent && editorContent !== files[activeFile]) {
-      setFiles(prev => ({
-        ...prev,
+      setFileContentsAction({
+        ...files,
         [activeFile]: editorContent
-      }));
+      });
     }
 
     // Detect language from file extension if not already set
@@ -1020,7 +988,7 @@ function App() {
       if (result.success) {
         // Show output in a non-blocking modal
         const output = result.output || result.stdout || 'Code executed successfully!';
-        setOutputModal({
+        setOutputModalAction({
           isOpen: true,
           title: 'Code Execution Output',
           message: output,
@@ -1028,7 +996,7 @@ function App() {
         });
       } else {
         const errorMsg = result.error || result.stderr || 'Execution failed';
-        setOutputModal({
+        setOutputModalAction({
           isOpen: true,
           title: 'Execution Error',
           message: errorMsg,
@@ -1036,7 +1004,7 @@ function App() {
         });
       }
     } catch (error) {
-      setOutputModal({
+      setOutputModalAction({
         isOpen: true,
         title: 'Execution Failed',
         message: error.message,
@@ -1052,6 +1020,48 @@ function App() {
     }
     console.log('Snippet selected:', snippet);
     // Snippet will be inserted via Editor component's internal handling
+  };
+
+  // Terminal handler functions
+  const handleToggleTerminal = () => {
+    toggleTerminalAction();
+  };
+
+  const handleCreateTerminal = async () => {
+    if (!window.electronAPI) {
+      console.error('Electron API not available');
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI.createTerminal();
+      if (result.success && result.terminal) {
+        addTerminalAction(result.terminal);
+        setActiveTerminalIdAction(result.terminal.id);
+      }
+    } catch (error) {
+      console.error('Failed to create terminal:', error);
+    }
+  };
+
+  const handleTerminalSelect = (terminalId) => {
+    setActiveTerminalIdAction(terminalId);
+  };
+
+  const handleTerminalClose = async (terminalId) => {
+    if (!window.electronAPI) {
+      console.error('Electron API not available');
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI.closeTerminal(terminalId);
+      if (result.success) {
+        removeTerminalAction(terminalId);
+      }
+    } catch (error) {
+      console.error('Failed to close terminal:', error);
+    }
   };
 
   // Listen for menu actions
@@ -1095,13 +1105,13 @@ function App() {
             <div className="editor-tab-bar">
               <button
                 className={`editor-tab-button ${activeTab === 'editor' ? 'active' : ''}`}
-                onClick={() => setActiveTab('editor')}
+                onClick={() => setActiveTabAction('editor')}
               >
                 📝 Editor
               </button>
               <button
                 className={`editor-tab-button ${activeTab === 'deliberation' ? 'active' : ''}`}
-                onClick={() => setActiveTab('deliberation')}
+                onClick={() => setActiveTabAction('deliberation')}
               >
                 🤖 Deliberation
               </button>
@@ -1170,14 +1180,14 @@ function App() {
         isDirty={dirtyFiles[activeFile] || false}
         lastSaved={lastSavedTimes[activeFile]}
         lspStatus={lspServers[language]?.status || 'disconnected'}
-        onSettingsClick={() => setShowSettings(true)}
+        onSettingsClick={() => setShowSettingsAction(true)}
         onQualityMetricsClick={handleEvaluateCode}
-        onRubricEditorClick={() => setShowRubricEditor(true)}
+        onRubricEditorClick={() => setShowRubricEditorAction(true)}
       />
       <Settings
         isOpen={showSettings}
         onClose={() => {
-          setShowSettings(false);
+          setShowSettingsAction(false);
           // Reload connection status after settings change
           checkConnection();
         }}
@@ -1211,26 +1221,26 @@ function App() {
       {showSnippetPanel && (
         <SnippetPanel
           isOpen={showSnippetPanel}
-          onClose={() => setShowSnippetPanel(false)}
+          onClose={() => showSnippetPanel && toggleSnippetPanelAction()}
           currentLanguage={language}
           onSnippetSelect={handleSnippetSelect}
           editorRef={editorRef}
         />
       )}
-      {showQualityMetrics && (
-        <div className="modal-overlay" onClick={() => setShowQualityMetrics(false)}>
+      {localShowQualityMetrics && (
+        <div className="modal-overlay" onClick={() => setLocalShowQualityMetrics(false)}>
           <div className="modal-content quality-metrics-modal" onClick={(e) => e.stopPropagation()}>
             <QualityMetrics
               evaluation={evaluationData}
               history={evaluationHistory}
-              onClose={() => setShowQualityMetrics(false)}
+              onClose={() => setLocalShowQualityMetrics(false)}
             />
           </div>
         </div>
       )}
       {showRubricEditor && (
         <RubricEditor
-          onClose={() => setShowRubricEditor(false)}
+          onClose={() => setShowRubricEditorAction(false)}
           onSave={handleRubricSave}
         />
       )}
