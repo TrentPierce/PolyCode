@@ -5,7 +5,7 @@ function Settings({ isOpen, onClose }) {
   // Select state from store
   const settings = useStore(state => state.settings);
   const showSettings = useStore(state => state.ui.showSettings);
-  
+
   // Select actions from store
   const setLmstudioUrl = useStore(state => state.setLmstudioUrl);
   const setLmstudioPort = useStore(state => state.setLmstudioPort);
@@ -50,22 +50,27 @@ function Settings({ isOpen, onClose }) {
     setSaving(true);
     setError(null);
     setTestResult(null);
-    
+
     try {
-      // Validate URL format (hostname only, port separate)
-      const urlPattern = /^https?:\/\/[^:\/]+$/;
-      if (!urlPattern.test(settings.lmstudioUrl)) {
-        setError('Invalid URL format. Please use format: http://hostname (without port)');
+      // Validate URL format - accept URLs with or without port
+      // Examples: http://localhost, http://localhost:1234, http://192.168.1.100
+      const urlPattern = /^https?:\/\/[a-zA-Z0-9][-a-zA-Z0-9]*(\.[a-zA-Z0-9][-a-zA-Z0-9]*)*(?::\d+)?$/;
+      const url = settings.lmstudioUrl;
+
+      if (!urlPattern.test(url)) {
+        setError('Invalid URL format. Please use format: http://hostname or http://hostname:port');
         setSaving(false);
         return;
       }
 
-      // Validate port format (number)
-      const port = parseInt(settings.lmstudioPort, 10);
-      if (isNaN(port) || port < 1 || port > 65535) {
-        setError('Invalid port number. Please enter a value between 1 and 65535');
-        setSaving(false);
-        return;
+      // If port is separate, validate it
+      if (settings.lmstudioPort) {
+        const port = parseInt(settings.lmstudioPort, 10);
+        if (isNaN(port) || port < 1 || port > 65535) {
+          setError('Invalid port number. Please enter a value between 1 and 65535');
+          setSaving(false);
+          return;
+        }
       }
 
       const result = await window.electronAPI.saveSettings(settings);
@@ -85,39 +90,30 @@ function Settings({ isOpen, onClose }) {
   };
 
   const handleTest = async () => {
-    const loading = true;
+    setLoadingModels(true);
     setError(null);
     setTestResult(null);
-    
+
     try {
       // Construct full URL from hostname and port
       const { lmstudioUrl, lmstudioPort } = settings;
-      const urlPattern = /^https?:\/\/[^:\/]+$/;
-      
-      // Validate hostname (URL without port)
-      if (!urlPattern.test(lmstudioUrl)) {
-        setError('Invalid URL format. Please use format: http://hostname (without port)');
-        setLoadingModels(false);
-        return;
-      }
 
-      // Validate port format
-      const port = parseInt(lmstudioPort, 10);
-      if (isNaN(port) || port < 1 || port > 65535) {
-        setError('Invalid port number. Please enter a value between 1 and 65535');
-        setLoadingModels(false);
-        return;
-      }
+      let fullUrl = lmstudioUrl.replace(/\/$/, ''); // Remove trailing slash
 
-      // Build full URL with port if specified
-      const fullUrl = port && port !== '1234' 
-        ? `${lmstudioUrl.replace(/\/$/, '')}:${port}` 
-        : lmstudioUrl;
+      // Check if URL already has a port
+      const hasPort = /:\d+$/.test(fullUrl);
+
+      // Add port if not already in URL and port is specified
+      if (!hasPort && lmstudioPort) {
+        fullUrl = `${fullUrl}:${lmstudioPort}`;
+      }
 
       const result = await window.electronAPI.testConnection(fullUrl);
       if (result.success) {
         if (result.connected) {
           setTestResult({ success: true, message: 'Connection successful! LMStudio is accessible.' });
+          // Reload models after successful connection
+          loadAvailableModels();
         } else {
           setTestResult({ success: false, message: `Connection failed: ${result.error || 'Unknown error'}` });
         }
@@ -144,7 +140,7 @@ function Settings({ isOpen, onClose }) {
         <div className="settings-content">
           <div className="settings-section">
             <h3>LMStudio Configuration</h3>
-            
+
             <div className="settings-field">
               <label htmlFor="lmstudio-url">LMStudio API URL</label>
               <input

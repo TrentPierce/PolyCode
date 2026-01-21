@@ -23,21 +23,26 @@ class SettingsManager {
    * Constructs full URL from hostname and port settings
    */
   getLmstudioUrl() {
-    const hostname = this.settings.lmstudioUrl || this.defaultSettings.lmstudioUrl;
+    let hostname = this.settings.lmstudioUrl || this.defaultSettings.lmstudioUrl;
     const port = this.settings.lmstudioPort || this.defaultSettings.lmstudioPort;
-    
+
     // Ensure protocol
-    let url = hostname;
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      url = 'http://' + url;
+    if (!hostname.startsWith('http://') && !hostname.startsWith('https://')) {
+      hostname = 'http://' + hostname;
     }
-    
-    // Add port (always add it since it's the default)
-    if (port && port.trim() !== '') {
-      url = `${url}:${port}`;
+
+    // Remove trailing slash
+    hostname = hostname.replace(/\/$/, '');
+
+    // Check if URL already has a port
+    const hasPort = /:\d+$/.test(hostname);
+
+    // Add port if not already in URL and port is specified
+    if (!hasPort && port && port.trim() !== '') {
+      hostname = `${hostname}:${port}`;
     }
-    
-    return url;
+
+    return hostname;
   }
 
   /**

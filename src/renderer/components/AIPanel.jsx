@@ -34,7 +34,7 @@ import { useStore } from '../store';
  */
 function AIPanel({ activeFile, code, language, files = {}, onCodeGenerated, onDeliberationUpdate }) {
   // Select state from store
-  const currentPrompt = useStore(state => state.ai.currentPrompt);
+  const currentPrompt = useStore(state => state.ai?.currentPrompt ?? '');
   const currentInstruction = useStore(state => state.ai.currentInstruction);
   const loading = useStore(state => state.ai.loading);
   const result = useStore(state => state.ai.result);
@@ -373,10 +373,21 @@ function AIPanel({ activeFile, code, language, files = {}, onCodeGenerated, onDe
       <div className="ai-panel-content" style={{ overflowY: 'auto', flex: 1 }}>
         <div className="ai-input-group">
           <label>Mode</label>
-          <select value={mode} onChange={(e) => setAiMode(e.target.value)}>
-            <option value="generate">Generate Code</option>
-            <option value="edit">Edit Code</option>
-            <option value="analyze">Analyze Code</option>
+          <select
+            value={mode}
+            onChange={(e) => setAiMode(e.target.value)}
+            style={{
+              backgroundColor: '#1e1e1e',
+              color: '#d4d4d4',
+              border: '1px solid #3e3e42',
+              borderRadius: '4px',
+              padding: '0.5rem',
+              width: '100%'
+            }}
+          >
+            <option value="generate" style={{ backgroundColor: '#1e1e1e', color: '#d4d4d4' }}>Generate Code</option>
+            <option value="edit" style={{ backgroundColor: '#1e1e1e', color: '#d4d4d4' }}>Edit Code</option>
+            <option value="analyze" style={{ backgroundColor: '#1e1e1e', color: '#d4d4d4' }}>Analyze Code</option>
           </select>
         </div>
 

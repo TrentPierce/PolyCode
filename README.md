@@ -1,5 +1,9 @@
 # PolyCode IDE
 
+> **⚠️ ALPHA STATE WARNING**: This application is currently in active development (Alpha). Many features typically found in mature IDEs may be incomplete, unstable, or missing. Not all features work as expected. Use with caution.
+
+![PolyCode IDE Interface](assets/screenshot.png)
+
 AI-Powered IDE with Multi-Model Deliberation Architecture
 
 Inspired by PolyCouncil's proven multi-model deliberation system, PolyCode IDE is a locally-run, AI-powered code editor that uses multiple LLMs through LMStudio to generate and edit code collaboratively.

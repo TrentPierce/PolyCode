@@ -33,9 +33,9 @@ const logger = require('./core/logger');
 
 // Handle unhandled promise rejections to prevent app crashes
 process.on('unhandledRejection', (reason, promise) => {
-  logger.warn('Unhandled promise rejection', { 
+  logger.warn('Unhandled promise rejection', {
     reason: reason?.message || reason,
-    stack: reason?.stack 
+    stack: reason?.stack
   });
   // Don't crash the app - just log the error
 });
@@ -138,7 +138,7 @@ app.whenReady().then(async () => {
   const lmstudioUrl = settingsManager.getLmstudioUrl();
   logger.info('Initializing PolyCouncil orchestrator', { url: lmstudioUrl });
   orchestrator = new PolyCouncilOrchestrator(lmstudioUrl);
-  
+
   // Initialize orchestrator with graceful error handling
   // The app should work even if LMStudio is not accessible
   (async () => {
@@ -157,7 +157,7 @@ app.whenReady().then(async () => {
       logger.info('PolyCouncil orchestrator initialized successfully');
     } catch (error) {
       // Log but don't crash - the app can work without LMStudio
-      logger.warn('Orchestrator initialization failed - app will continue without AI features', { 
+      logger.warn('Orchestrator initialization failed - app will continue without AI features', {
         error: error.message,
         hint: 'Make sure LMStudio is running and models are loaded'
       });
@@ -202,10 +202,10 @@ ipcMain.handle('generate-code', async (event, { prompt, context, language, exist
     // Get cache settings
     const cacheSettings = settingsManager.getSetting('cacheEnabled') !== undefined
       ? {
-          enabled: settingsManager.getSetting('cacheEnabled'),
-          maxSize: settingsManager.getSetting('cacheMaxSize') || 100,
-          ttl: (settingsManager.getSetting('cacheTTL') || 60) * 60 * 1000
-        }
+        enabled: settingsManager.getSetting('cacheEnabled'),
+        maxSize: settingsManager.getSetting('cacheMaxSize') || 100,
+        ttl: (settingsManager.getSetting('cacheTTL') || 60) * 60 * 1000
+      }
       : { enabled: true, maxSize: 100, ttl: 3600000 };
 
     logger.debug('Cache settings loaded', { cacheEnabled: cacheSettings.enabled });
@@ -251,8 +251,8 @@ ipcMain.handle('generate-code', async (event, { prompt, context, language, exist
         shouldRetry: (error) => {
           // Retry on network or temporary errors
           return error.message.includes('timeout') ||
-                 error.message.includes('network') ||
-                 error.message.includes('ECONNREFUSED');
+            error.message.includes('network') ||
+            error.message.includes('ECONNREFUSED');
         }
       }
     );
@@ -325,88 +325,88 @@ ipcMain.handle('get-models', async () => {
     return { success: true, data: models };
   } catch (error) {
     // Return empty models list if LMStudio is not accessible
-    logger.warn('Failed to get models from LMStudio - this is expected if LMStudio is not running', { 
-      error: error.message 
+    logger.warn('Failed to get models from LMStudio - this is expected if LMStudio is not running', {
+      error: error.message
     });
     return { success: true, data: [] };
   }
 });
 
-  ipcMain.handle('configure-models', async (event, config) => {
-    try {
-      // Validate models
-      const availableModels = await orchestrator.getAvailableModels();
-      const validation = validateModels(config.models || [], availableModels);
+ipcMain.handle('configure-models', async (event, config) => {
+  try {
+    // Validate models
+    const availableModels = await orchestrator.getAvailableModels();
+    const validation = validateModels(config.models || [], availableModels);
 
-      if (!validation.isValid) {
-        return { success: false, error: `Invalid models: ${validation.errors.join(', ')}` };
-      }
+    if (!validation.isValid) {
+      return { success: false, error: `Invalid models: ${validation.errors.join(', ')}` };
+    }
 
-      await orchestrator.configureModels({
-        ...config,
-        models: validation.sanitized
+    await orchestrator.configureModels({
+      ...config,
+      models: validation.sanitized
+    });
+
+    // Update cache configuration if provided
+    if (config.cacheEnabled !== undefined) {
+      updateCacheConfig({
+        maxSize: config.cacheMaxSize || 100,
+        ttl: (config.cacheTTL || 60) * 60 * 1000 // Convert minutes to milliseconds
       });
-      
-      // Update cache configuration if provided
-      if (config.cacheEnabled !== undefined) {
-        updateCacheConfig({
-          maxSize: config.cacheMaxSize || 100,
-          ttl: (config.cacheTTL || 60) * 60 * 1000 // Convert minutes to milliseconds
-        });
-      }
-      
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
     }
-  });
 
-  // Cache management IPC handlers
-  ipcMain.handle('get-cache-stats', async () => {
-    try {
-      const { getCache } = require('./core/cache');
-      const cache = getCache();
-      const stats = cache.getStats();
-      return { success: true, data: stats };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  });
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
 
-  ipcMain.handle('clean-cache', async () => {
-    try {
-      const { getCache } = require('./core/cache');
-      const cache = getCache();
-      const cleaned = cache.cleanExpired();
-      return { success: true, data: { cleaned } };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  });
+// Cache management IPC handlers
+ipcMain.handle('get-cache-stats', async () => {
+  try {
+    const { getCache } = require('./core/cache');
+    const cache = getCache();
+    const stats = cache.getStats();
+    return { success: true, data: stats };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
 
-  ipcMain.handle('optimize-cache', async (event, keep) => {
-    try {
-      const { getCache } = require('./core/cache');
-      const cache = getCache();
-      const removed = cache.optimize(keep || 50);
-      return { success: true, data: { removed } };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  });
+ipcMain.handle('clean-cache', async () => {
+  try {
+    const { getCache } = require('./core/cache');
+    const cache = getCache();
+    const cleaned = cache.cleanExpired();
+    return { success: true, data: { cleaned } };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
 
-  ipcMain.handle('clear-cache', async (event, model = null) => {
-    try {
-      const { getCache } = require('./core/cache');
-      const cache = getCache();
-      const cleared = model ? cache.evictModel(model) : cache.clear();
-      logger.info('Cache cleared', { model, clearedCount: cleared });
-      return { success: true, data: { cleared } };
-    } catch (error) {
-      logger.error('Clear cache error', { error: error.message });
-      return { success: false, error: error.message };
-    }
-  });
+ipcMain.handle('optimize-cache', async (event, keep) => {
+  try {
+    const { getCache } = require('./core/cache');
+    const cache = getCache();
+    const removed = cache.optimize(keep || 50);
+    return { success: true, data: { removed } };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('clear-cache', async (event, model = null) => {
+  try {
+    const { getCache } = require('./core/cache');
+    const cache = getCache();
+    const cleared = model ? cache.evictModel(model) : cache.clear();
+    logger.info('Cache cleared', { model, clearedCount: cleared });
+    return { success: true, data: { cleared } };
+  } catch (error) {
+    logger.error('Clear cache error', { error: error.message });
+    return { success: false, error: error.message };
+  }
+});
 
 // Logging IPC Handlers
 ipcMain.handle('log-message', async (event, level, message, context = {}) => {
@@ -570,7 +570,7 @@ ipcMain.handle('new-project', async () => {
   }
 });
 
- ipcMain.handle('open-project', async () => {
+ipcMain.handle('open-project', async () => {
   logger.info('Open project requested');
 
   try {
@@ -603,26 +603,24 @@ ipcMain.handle('new-project', async () => {
           const entries = fs.readdirSync(dir, { withFileTypes: true });
           entries.forEach(entry => {
             const fullPath = path.join(dir, entry.name);
-            // Normalize path separators to forward slashes for consistency
             const relativePath = basePath ? `${basePath}/${entry.name}` : entry.name;
             const normalizedPath = relativePath.replace(/\\/g, '/');
 
             // Skip hidden files and common ignore patterns
             if (entry.name.startsWith('.') ||
-                entry.name === 'node_modules' ||
-                entry.name === '.git') {
+              entry.name === 'node_modules' ||
+              entry.name === '.git' ||
+              entry.name === 'dist' ||
+              entry.name === 'build' ||
+              entry.name === 'coverage') {
               return;
             }
 
             if (entry.isDirectory()) {
               loadFiles(fullPath, relativePath);
             } else if (entry.isFile()) {
-              try {
-                const content = fs.readFileSync(fullPath, 'utf8');
-                files[normalizedPath] = content;
-              } catch (err) {
-                logger.error(`Failed to read file ${fullPath}`, { error: err.message });
-              }
+              // OPTIMIZATION: Don't read content initially to speed up load
+              files[normalizedPath] = null;
             }
           });
         } catch (err) {
@@ -630,7 +628,7 @@ ipcMain.handle('new-project', async () => {
         }
       };
       loadFiles(projectPath);
-      logger.info(`Loaded ${Object.keys(files).length} files from project`, { projectPath, fileCount: Object.keys(files).length });
+      logger.info(`Loaded structure for ${Object.keys(files).length} files from project`, { projectPath });
       return { success: true, path: projectPath, files };
     }
     logger.info('Open project dialog cancelled');
@@ -641,7 +639,25 @@ ipcMain.handle('new-project', async () => {
   }
 });
 
- ipcMain.handle('save-project', async (event, files) => {
+// Handler to lazy-load file content
+ipcMain.handle('read-file', async (event, filePath) => {
+  try {
+    if (!projectPath) {
+      return { success: false, error: 'No project open' };
+    }
+    const fullPath = path.join(projectPath, filePath);
+    if (!fs.existsSync(fullPath)) {
+      return { success: false, error: 'File not found' };
+    }
+    const content = fs.readFileSync(fullPath, 'utf8');
+    return { success: true, content };
+  } catch (error) {
+    logger.error('Read file error', { error: error.message });
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('save-project', async (event, files) => {
   logger.info('Save project requested', { fileCount: Object.keys(files).length, projectPath });
 
   try {
@@ -711,186 +727,186 @@ ipcMain.handle('get-project-path', async () => {
   return { success: true, path: projectPath };
 });
 
-  ipcMain.handle('save-file', async (event, filePath, content) => {
-    try {
-      if (!projectPath) {
-        return { success: false, error: 'No project folder selected' };
-      }
-
-      // Validate file path
-      const pathValidation = validateFilePath(filePath, projectPath);
-      if (!pathValidation.isValid) {
-        return { success: false, error: `Invalid file path: ${pathValidation.errors.join(', ')}` };
-      }
-
-      // Validate code content
-      const codeValidation = validateCode(content);
-      if (!codeValidation.isValid) {
-        return { success: false, error: `Invalid code: ${codeValidation.errors.join(', ')}` };
-      }
-
-      const fullPath = path.join(projectPath, pathValidation.sanitized);
-      const dir = path.dirname(fullPath);
-
-      // Create directory if it doesn't exist
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
-
-      // Write file
-      fs.writeFileSync(fullPath, codeValidation.sanitized, 'utf8');
-      return { success: true, path: fullPath };
-    } catch (error) {
-      return { success: false, error: error.message };
+ipcMain.handle('save-file', async (event, filePath, content) => {
+  try {
+    if (!projectPath) {
+      return { success: false, error: 'No project folder selected' };
     }
-  });
 
-  // File operation IPC handlers
-  ipcMain.handle('rename-file', async (event, filePath, newPath) => {
-    try {
-      if (!projectPath) {
-        return { success: false, error: 'No project folder selected' };
-      }
-
-      const oldFullPath = path.join(projectPath, filePath);
-      const newFullPath = path.join(projectPath, newPath);
-
-      // Check if source exists
-      if (!fs.existsSync(oldFullPath)) {
-        return { success: false, error: 'File not found' };
-      }
-
-      // Check if destination already exists
-      if (fs.existsSync(newFullPath)) {
-        return { success: false, error: 'Destination file already exists' };
-      }
-
-      // Ensure destination directory exists
-      const newDir = path.dirname(newFullPath);
-      if (!fs.existsSync(newDir)) {
-        fs.mkdirSync(newDir, { recursive: true });
-      }
-
-      // Rename/move the file
-      fs.renameSync(oldFullPath, newFullPath);
-
-      return { success: true, newPath: newFullPath };
-    } catch (error) {
-      return { success: false, error: error.message };
+    // Validate file path
+    const pathValidation = validateFilePath(filePath, projectPath);
+    if (!pathValidation.isValid) {
+      return { success: false, error: `Invalid file path: ${pathValidation.errors.join(', ')}` };
     }
-  });
 
-  ipcMain.handle('delete-file', async (event, filePath) => {
-    try {
-      if (!projectPath) {
-        return { success: false, error: 'No project folder selected' };
-      }
-
-      const fullPath = path.join(projectPath, filePath);
-
-      // Check if file exists
-      if (!fs.existsSync(fullPath)) {
-        return { success: false, error: 'File not found' };
-      }
-
-      // Delete file or directory (recursively for directories)
-      const stats = fs.statSync(fullPath);
-      if (stats.isDirectory()) {
-        fs.rmSync(fullPath, { recursive: true, force: true });
-      } else {
-        fs.unlinkSync(fullPath);
-      }
-
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
+    // Validate code content
+    const codeValidation = validateCode(content);
+    if (!codeValidation.isValid) {
+      return { success: false, error: `Invalid code: ${codeValidation.errors.join(', ')}` };
     }
-  });
 
-  ipcMain.handle('create-folder', async (event, folderName, parentPath) => {
-    try {
-      if (!projectPath) {
-        return { success: false, error: 'No project folder selected' };
-      }
+    const fullPath = path.join(projectPath, pathValidation.sanitized);
+    const dir = path.dirname(fullPath);
 
-      const fullPath = parentPath
-        ? path.join(projectPath, parentPath, folderName)
-        : path.join(projectPath, folderName);
-
-      // Check if folder already exists
-      if (fs.existsSync(fullPath)) {
-        return { success: false, error: 'Folder already exists' };
-      }
-
-      // Create folder
-      fs.mkdirSync(fullPath, { recursive: true });
-
-      return { success: true, path: fullPath };
-    } catch (error) {
-      return { success: false, error: error.message };
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
-  });
 
-  ipcMain.handle('create-file', async (event, fileName, parentPath) => {
-    try {
-      if (!projectPath) {
-        return { success: false, error: 'No project folder selected' };
-      }
+    // Write file
+    fs.writeFileSync(fullPath, codeValidation.sanitized, 'utf8');
+    return { success: true, path: fullPath };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
 
-      const fullPath = parentPath
-        ? path.join(projectPath, parentPath, fileName)
-        : path.join(projectPath, fileName);
-
-      // Check if file already exists
-      if (fs.existsSync(fullPath)) {
-        return { success: false, error: 'File already exists' };
-      }
-
-      // Ensure directory exists
-      const dir = path.dirname(fullPath);
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
-
-      // Create empty file
-      fs.writeFileSync(fullPath, '', 'utf8');
-
-      return { success: true, path: fullPath };
-    } catch (error) {
-      return { success: false, error: error.message };
+// File operation IPC handlers
+ipcMain.handle('rename-file', async (event, filePath, newPath) => {
+  try {
+    if (!projectPath) {
+      return { success: false, error: 'No project folder selected' };
     }
-  });
 
-  ipcMain.handle('get-file-stats', async (event, filePath) => {
-    try {
-      if (!projectPath) {
-        return { success: false, error: 'No project folder selected' };
-      }
+    const oldFullPath = path.join(projectPath, filePath);
+    const newFullPath = path.join(projectPath, newPath);
 
-      const fullPath = path.join(projectPath, filePath);
-
-      // Check if file exists
-      if (!fs.existsSync(fullPath)) {
-        return { success: false, error: 'File not found' };
-      }
-
-      // Get file stats
-      const stats = fs.statSync(fullPath);
-
-      return {
-        success: true,
-        stats: {
-          size: stats.size,
-          modified: stats.mtime,
-          created: stats.birthtime,
-          isFile: stats.isFile(),
-          isDirectory: stats.isDirectory()
-        }
-      };
-    } catch (error) {
-      return { success: false, error: error.message };
+    // Check if source exists
+    if (!fs.existsSync(oldFullPath)) {
+      return { success: false, error: 'File not found' };
     }
-  });
+
+    // Check if destination already exists
+    if (fs.existsSync(newFullPath)) {
+      return { success: false, error: 'Destination file already exists' };
+    }
+
+    // Ensure destination directory exists
+    const newDir = path.dirname(newFullPath);
+    if (!fs.existsSync(newDir)) {
+      fs.mkdirSync(newDir, { recursive: true });
+    }
+
+    // Rename/move the file
+    fs.renameSync(oldFullPath, newFullPath);
+
+    return { success: true, newPath: newFullPath };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('delete-file', async (event, filePath) => {
+  try {
+    if (!projectPath) {
+      return { success: false, error: 'No project folder selected' };
+    }
+
+    const fullPath = path.join(projectPath, filePath);
+
+    // Check if file exists
+    if (!fs.existsSync(fullPath)) {
+      return { success: false, error: 'File not found' };
+    }
+
+    // Delete file or directory (recursively for directories)
+    const stats = fs.statSync(fullPath);
+    if (stats.isDirectory()) {
+      fs.rmSync(fullPath, { recursive: true, force: true });
+    } else {
+      fs.unlinkSync(fullPath);
+    }
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('create-folder', async (event, folderName, parentPath) => {
+  try {
+    if (!projectPath) {
+      return { success: false, error: 'No project folder selected' };
+    }
+
+    const fullPath = parentPath
+      ? path.join(projectPath, parentPath, folderName)
+      : path.join(projectPath, folderName);
+
+    // Check if folder already exists
+    if (fs.existsSync(fullPath)) {
+      return { success: false, error: 'Folder already exists' };
+    }
+
+    // Create folder
+    fs.mkdirSync(fullPath, { recursive: true });
+
+    return { success: true, path: fullPath };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('create-file', async (event, fileName, parentPath) => {
+  try {
+    if (!projectPath) {
+      return { success: false, error: 'No project folder selected' };
+    }
+
+    const fullPath = parentPath
+      ? path.join(projectPath, parentPath, fileName)
+      : path.join(projectPath, fileName);
+
+    // Check if file already exists
+    if (fs.existsSync(fullPath)) {
+      return { success: false, error: 'File already exists' };
+    }
+
+    // Ensure directory exists
+    const dir = path.dirname(fullPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
+    // Create empty file
+    fs.writeFileSync(fullPath, '', 'utf8');
+
+    return { success: true, path: fullPath };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-file-stats', async (event, filePath) => {
+  try {
+    if (!projectPath) {
+      return { success: false, error: 'No project folder selected' };
+    }
+
+    const fullPath = path.join(projectPath, filePath);
+
+    // Check if file exists
+    if (!fs.existsSync(fullPath)) {
+      return { success: false, error: 'File not found' };
+    }
+
+    // Get file stats
+    const stats = fs.statSync(fullPath);
+
+    return {
+      success: true,
+      stats: {
+        size: stats.size,
+        modified: stats.mtime,
+        created: stats.birthtime,
+        isFile: stats.isFile(),
+        isDirectory: stats.isDirectory()
+      }
+    };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
 
 // Git Integration IPC Handlers
 ipcMain.handle('git-status', async () => {
@@ -898,11 +914,11 @@ ipcMain.handle('git-status', async () => {
     if (!projectPath) {
       return { success: false, error: 'No project folder opened' };
     }
-    
+
     const isRepo = await gitManager.isGitRepo();
     if (!isRepo) {
-      return { 
-        success: true, 
+      return {
+        success: true,
         isGitRepo: false,
         branch: null,
         changedFiles: [],
@@ -937,7 +953,7 @@ ipcMain.handle('git-commit', async (event, message, authorInfo = {}) => {
     }
 
     const result = await gitManager.commit(message, authorInfo);
-    
+
     // Refresh status after commit
     const status = await gitManager.getStatus();
     const history = await gitManager.getHistory(1);
@@ -966,7 +982,7 @@ ipcMain.handle('git-push', async () => {
     }
 
     const result = await gitManager.push();
-    
+
     // Refresh status after push
     const status = await gitManager.getStatus();
 
@@ -992,7 +1008,7 @@ ipcMain.handle('git-pull', async () => {
     }
 
     const result = await gitManager.pull();
-    
+
     // Refresh status after pull
     const status = await gitManager.getStatus();
 
@@ -1018,7 +1034,7 @@ ipcMain.handle('git-branch-list', async () => {
     }
 
     const branches = await gitManager.getBranches();
-    
+
     return {
       success: true,
       current: branches.current,
@@ -1041,7 +1057,7 @@ ipcMain.handle('git-checkout', async (event, branchName) => {
     }
 
     const result = await gitManager.checkout(branchName);
-    
+
     // Refresh status after checkout
     const status = await gitManager.getStatus();
     const history = await gitManager.getHistory(1);
@@ -1073,7 +1089,7 @@ ipcMain.handle('git-create-branch', async (event, branchName) => {
     }
 
     const result = await gitManager.createBranch(branchName);
-    
+
     // Refresh status after creating branch
     const status = await gitManager.getStatus();
     const history = await gitManager.getHistory(1);
@@ -1101,7 +1117,7 @@ ipcMain.handle('git-history', async (event, maxCount = 20) => {
     }
 
     const history = await gitManager.getHistory(maxCount);
-    
+
     return {
       success: true,
       commits: history.commits,
@@ -1125,7 +1141,7 @@ ipcMain.handle('git-diff', async (event, filePath) => {
 
     const diffResult = await gitManager.getDiff(filePath);
     const parsedDiff = gitManager.parseDiff(diffResult.diff);
-    
+
     return {
       success: true,
       filePath: diffResult.filePath,
@@ -1146,7 +1162,7 @@ ipcMain.handle('git-init', async () => {
     }
 
     const result = await gitManager.init();
-    
+
     // Refresh status after init
     const status = await gitManager.getStatus();
 
@@ -1171,7 +1187,7 @@ ipcMain.handle('git-is-repo', async () => {
     }
 
     const isRepo = await gitManager.isGitRepo();
-    
+
     return { success: true, isRepo };
   } catch (error) {
     console.error('Error checking git repo:', error);
@@ -1319,86 +1335,6 @@ ipcMain.handle('run-code', async (event, filePath, language, code) => {
     return result;
   } catch (error) {
     return { success: false, error: error.message };
-  }
-
-    // Debug logging
-    console.log('Running code:', {
-      filePath,
-      projectPath,
-      fullPath,
-      language,
-      fileExists: fs.existsSync(fullPath),
-      isFile: stats.isFile()
-    });
-
-    let command;
-    let args = [];
-    
-    // Determine command based on language
-    switch (language) {
-      case 'javascript':
-        command = 'node';
-        // Use normalized absolute path
-        args = [fullPath];
-        break;
-      case 'typescript':
-        command = 'ts-node';
-        args = [fullPath];
-        break;
-      case 'python':
-        // On Windows, ensure we use the full normalized path
-        command = 'python';
-        // Use the absolute path, properly normalized
-        args = [fullPath];
-        break;
-      case 'java': {
-        // Java requires compilation first
-        const className = path.basename(filePath, '.java');
-        const classPath = path.dirname(fullPath);
-        const isWindows = process.platform === 'win32';
-        const javaCompile = spawn('javac', [fullPath], { 
-          cwd: classPath,
-          shell: isWindows ? false : true
-        });
-        await new Promise((resolve, reject) => {
-          javaCompile.on('close', (code) => {
-            if (code === 0) {
-              resolve();
-            } else {
-              reject(new Error('Compilation failed'));
-            }
-          });
-        });
-        command = 'java';
-        args = ['-cp', classPath, className];
-        break;
-      }
-      case 'cpp':
-      case 'c': {
-        // C/C++ requires compilation
-        const ext = language === 'cpp' ? '.cpp' : '.c';
-        const outputName = path.basename(filePath, ext);
-        const outputPath = path.join(path.dirname(fullPath), outputName);
-        const compiler = language === 'cpp' ? 'g++' : 'gcc';
-        const isWindows = process.platform === 'win32';
-        const cppCompile = spawn(compiler, [fullPath, '-o', outputPath], {
-          shell: isWindows ? false : true
-        });
-        await new Promise((resolve, reject) => {
-          cppCompile.on('close', (code) => {
-            if (code === 0) {
-              resolve();
-            } else {
-              reject(new Error('Compilation failed'));
-            }
-          });
-        });
-        command = outputPath;
-        args = [];
-        break;
-      }
-      default:
-        return { success: false, error: `Language ${language} is not supported for execution` };
   }
 });
 

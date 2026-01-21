@@ -3,50 +3,57 @@ const { contextBridge, ipcRenderer } = require('electron');
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electronAPI', {
-  generateCode: (prompt, context, language, existingFiles) => 
+  generateCode: (prompt, context, language, existingFiles) =>
     ipcRenderer.invoke('generate-code', { prompt, context, language, existingFiles }),
-  
-  editCode: (code, instruction, context) => 
+
+  editCode: (code, instruction, context) =>
     ipcRenderer.invoke('edit-code', { code, instruction, context }),
-  
-  analyzeCode: (code, language) => 
+
+  analyzeCode: (code, language) =>
     ipcRenderer.invoke('analyze-code', { code, language }),
-  
-  runCode: (filePath, language, code, environment = 'sandbox') => 
-    ipcRenderer.invoke('run-code', { filePath, language, code, environment }),
-  
-  getModels: () => 
+
+  getModels: () =>
     ipcRenderer.invoke('get-models'),
-  
-  configureModels: (config) => 
+
+  configureModels: (config) =>
     ipcRenderer.invoke('configure-models', config),
-  
-  getSettings: () => 
+
+  getSettings: () =>
     ipcRenderer.invoke('get-settings'),
-  
-  saveSettings: (settings) => 
+
+  saveSettings: (settings) =>
     ipcRenderer.invoke('save-settings', settings),
-  
-  testConnection: (url) => 
-    ipcRenderer.invoke('test-connection', { url }),
-  
-  newProject: () => 
+
+  testConnection: (url) =>
+    ipcRenderer.invoke('test-connection', url),
+
+  newProject: () =>
     ipcRenderer.invoke('new-project'),
-  
-  openProject: () => 
+
+  openProject: () =>
     ipcRenderer.invoke('open-project'),
-  
-  saveProject: (files) => 
+
+  saveProject: (files) =>
     ipcRenderer.invoke('save-project', files),
-  
-  getProjectPath: () => 
+
+  getProjectPath: () =>
     ipcRenderer.invoke('get-project-path'),
-  
+
   saveFile: (filePath, content) =>
     ipcRenderer.invoke('save-file', filePath, content),
 
+  readFile: (filePath) =>
+    ipcRenderer.invoke('read-file', filePath),
+
   runCode: (filePath, language, code) =>
     ipcRenderer.invoke('run-code', filePath, language, code),
+
+  // Terminal aliases for compatibility (app.jsx uses createTerminal/closeTerminal)
+  createTerminal: (cwd = null) =>
+    ipcRenderer.invoke('terminal-create', cwd),
+
+  closeTerminal: (terminalId) =>
+    ipcRenderer.invoke('terminal-kill', terminalId),
 
   getRecentFiles: () =>
     ipcRenderer.invoke('get-recent-files'),
@@ -214,15 +221,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   // Settings
-  getSettings: () => 
+  getSettings: () =>
     ipcRenderer.invoke('get-settings'),
-  
-    saveSettings: (settings) => 
-      ipcRenderer.invoke('save-settings', settings),
-  
-  testConnection: (url) => 
+
+  saveSettings: (settings) =>
+    ipcRenderer.invoke('save-settings', settings),
+
+  testConnection: (url) =>
     ipcRenderer.invoke('test-connection', { url }),
-  
+
   // File operation IPC functions
   renameFile: (filePath, newPath) =>
     ipcRenderer.invoke('rename-file', filePath, newPath),

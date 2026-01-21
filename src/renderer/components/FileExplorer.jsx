@@ -25,14 +25,9 @@ function FileExplorer({
   const [contextMenuTarget, setContextMenuTarget] = useState(null);
   const [draggedFile, setDraggedFile] = useState(null);
 
-  // Debug: Log files when they change
+  // Debug: Log files when they change (removed for performance)
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('FileExplorer received files:', Object.keys(files).length, 'files');
-      if (Object.keys(files).length > 0) {
-        console.log('File paths:', Object.keys(files));
-      }
-    }
+    // Logging removed
   }, [files]);
 
   const getFileIcon = (fileName) => {
@@ -253,7 +248,7 @@ function FileExplorer({
         return;
       }
 
-      const parts = filePath.split('/');
+      const parts = filePath.split(/[/\\]/);
       if (parts.length > 1) {
         const folder = parts[0];
         if (!folders[folder]) {
@@ -366,7 +361,10 @@ function FileExplorer({
           New Project
         </button>
         <button
-          onClick={onOpenProject}
+          onClick={() => {
+            console.log('Open Folder clicked');
+            if (onOpenProject) onOpenProject();
+          }}
           style={{
             width: '100%',
             padding: '0.5rem',
@@ -379,7 +377,7 @@ function FileExplorer({
             marginBottom: '0.25rem'
           }}
         >
-          Open Project
+          Open Folder
         </button>
         {projectPath && (
           <button

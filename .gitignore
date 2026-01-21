@@ -11,3 +11,4 @@ build/
 .vscode/
 .idea/
 
+build_error.txt

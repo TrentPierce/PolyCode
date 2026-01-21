@@ -1,19 +1,20 @@
+@import './ai-debug.css';
+
 /* Main App Styles */
 .app-container {
   display: flex;
-  flex-direction: row;  /* Side-by-side layout */
+  flex-direction: column;
+  /* Top-down layout for Workspace + Footer */
   height: 100vh;
   width: 100vw;
   background: #1e1e1e;
   color: #d4d4d4;
-  overflow: hidden;  /* Prevent scrolling on container */
+  overflow: hidden;
+  /* Prevent scrolling on container */
 }
 
 /* Sidebar Layout */
-.app-container > .sidebar {
-  width: 280px;
-  min-width: 200px;
-  max-width: 400px;
+.app-container>.sidebar {
   background: #252526;
   border-right: 1px solid #3e3e42;
   overflow-y: auto;
@@ -22,12 +23,13 @@
 }
 
 /* Main Content Area */
-.app-container > .main-content {
+.app-container>.main-content {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  min-width: 0;  /* Prevent flex item from overflowing */
+  min-width: 0;
+  /* Prevent flex item from overflowing */
 }
 
 /* Modal Styles */
@@ -160,20 +162,38 @@
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.5;
   }
 }
 
+/* Main content area (Editor + AI Panel) */
 .main-content {
-  margin-left: 250px;
   display: flex;
   flex-direction: row;
-  height: calc(100vh - 25px);
+  flex: 1;
+  /* Fill remaining space in workspace */
+  height: 100%;
   overflow: hidden;
+}
+
+.resizer {
+  width: 5px;
+  background: #3e3e42;
+  cursor: col-resize;
+  z-index: 10;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.resizer:hover {
+  background: #007acc;
 }
 
 .editor-container {
@@ -181,7 +201,20 @@
   display: flex;
   flex-direction: column;
   background: #1e1e1e;
-  min-width: 0; /* Allow flexbox to shrink */
+  min-width: 0;
+  /* Allow flexbox to shrink */
+  overflow: hidden;
+}
+
+/* AI Panel Styles */
+.ai-panel {
+  width: 100%;
+  height: 100%;
+  background: #252526;
+  border-left: 1px solid #3e3e42;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .welcome-screen {
@@ -276,7 +309,8 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  min-height: 0; /* Allow flexbox to shrink */
+  min-height: 0;
+  /* Allow flexbox to shrink */
 }
 
 .editor-tabs-container {
@@ -320,7 +354,8 @@
   background: #2d2d30;
   border-bottom: 1px solid #3e3e42;
   overflow-x: auto;
-  flex-shrink: 0; /* Don't shrink tabs */
+  flex-shrink: 0;
+  /* Don't shrink tabs */
 }
 
 .editor-tab {
@@ -379,7 +414,8 @@
 .monaco-editor-container {
   flex: 1;
   width: 100%;
-  min-height: 0; /* Allow flexbox to shrink */
+  min-height: 0;
+  /* Allow flexbox to shrink */
   overflow: hidden;
 }
 
@@ -428,18 +464,7 @@
   font-weight: bold;
 }
 
-/* AI Panel Styles */
-.ai-panel {
-  width: 400px;
-  min-width: 300px;
-  max-width: 500px;
-  background: #252526;
-  border-left: 1px solid #3e3e42;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
-}
+/* AI Panel Styles (Header, Content, etc.) */
 
 .ai-panel-header {
   padding: 1rem;
@@ -571,6 +596,8 @@
 /* Status Bar Styles */
 .status-bar {
   height: 25px;
+  width: 100%;
+  flex-shrink: 0;
   background: #007acc;
   display: flex;
   align-items: center;
@@ -828,8 +855,13 @@
 
 /* Spinner Animation */
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .spinner {
@@ -1799,4 +1831,3 @@
   width: 95%;
   max-height: 85vh;
 }
-
