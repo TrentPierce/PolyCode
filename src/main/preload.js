@@ -2,34 +2,33 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
-  contextBridge.exposeInMainWorld('electronAPI', {
-    generateCode: (prompt, context, language, existingFiles) => 
-      ipcRenderer.invoke('generate-code', { prompt, context, language, existingFiles }),
-    
-    editCode: (code, instruction, context) => 
-      ipcRenderer.invoke('edit-code', { code, instruction, context }),
-    
-    analyzeCode: (code, language) => 
-      ipcRenderer.invoke('analyze-code', { code, language }),
-    
-    runCode: (filePath, language, code, environment = 'sandbox') => 
-      ipcRenderer.invoke('run-code', { filePath, language, code, environment }),
-    
-    getModels: () => 
-      ipcRenderer.invoke('get-models'),
-    
-    configureModels: (config) => 
-      ipcRenderer.invoke('configure-models', config),
-    
-    getSettings: () => 
-      ipcRenderer.invoke('get-settings'),
-    
-    saveSettings: (settings) => 
-      ipcRenderer.invoke('save-settings', settings),
-    
-    testConnection: (url) => 
-      ipcRenderer.invoke('test-connection', { url }),
-  });
+contextBridge.exposeInMainWorld('electronAPI', {
+  generateCode: (prompt, context, language, existingFiles) => 
+    ipcRenderer.invoke('generate-code', { prompt, context, language, existingFiles }),
+  
+  editCode: (code, instruction, context) => 
+    ipcRenderer.invoke('edit-code', { code, instruction, context }),
+  
+  analyzeCode: (code, language) => 
+    ipcRenderer.invoke('analyze-code', { code, language }),
+  
+  runCode: (filePath, language, code, environment = 'sandbox') => 
+    ipcRenderer.invoke('run-code', { filePath, language, code, environment }),
+  
+  getModels: () => 
+    ipcRenderer.invoke('get-models'),
+  
+  configureModels: (config) => 
+    ipcRenderer.invoke('configure-models', config),
+  
+  getSettings: () => 
+    ipcRenderer.invoke('get-settings'),
+  
+  saveSettings: (settings) => 
+    ipcRenderer.invoke('save-settings', settings),
+  
+  testConnection: (url) => 
+    ipcRenderer.invoke('test-connection', { url }),
   
   newProject: () => 
     ipcRenderer.invoke('new-project'),
@@ -49,6 +48,181 @@ const { contextBridge, ipcRenderer } = require('electron');
   runCode: (filePath, language, code) =>
     ipcRenderer.invoke('run-code', filePath, language, code),
 
+  getRecentFiles: () =>
+    ipcRenderer.invoke('get-recent-files'),
+
+  addRecentFile: (filePath) =>
+    ipcRenderer.invoke('add-recent-file', filePath),
+
+  rubricEvaluate: (code, language, rubric) =>
+    ipcRenderer.invoke('rubric-evaluate', { code, language, rubric }),
+
+  rubricGetHistory: (limit) =>
+    ipcRenderer.invoke('rubric-get-history', limit),
+
+  // File operation IPC functions
+  renameFile: (filePath, newPath) =>
+    ipcRenderer.invoke('rename-file', filePath, newPath),
+
+  deleteFile: (filePath) =>
+    ipcRenderer.invoke('delete-file', filePath),
+
+  createFile: (filePath) =>
+    ipcRenderer.invoke('create-file', filePath),
+
+  createFolder: (folderPath) =>
+    ipcRenderer.invoke('create-folder', folderPath),
+
+  // Git operation IPC functions
+  gitStatus: () =>
+    ipcRenderer.invoke('git-status'),
+
+  gitCommit: (message) =>
+    ipcRenderer.invoke('git-commit', message),
+
+  gitPush: () =>
+    ipcRenderer.invoke('git-push'),
+
+  gitPull: () =>
+    ipcRenderer.invoke('git-pull'),
+
+  gitCheckout: (branch) =>
+    ipcRenderer.invoke('git-checkout', branch),
+
+  gitGetBranches: () =>
+    ipcRenderer.invoke('git-get-branches'),
+
+  gitGetHistory: (filePath, limit) =>
+    ipcRenderer.invoke('git-get-history', { filePath, limit }),
+
+  gitGetDiff: (filePath) =>
+    ipcRenderer.invoke('git-get-diff', filePath),
+
+  gitInit: () =>
+    ipcRenderer.invoke('git-init'),
+
+  // LSP operation IPC functions
+  lspStart: (language) =>
+    ipcRenderer.invoke('lsp-start', language),
+
+  lspStop: (language) =>
+    ipcRenderer.invoke('lsp-stop', language),
+
+  // Debug operation IPC functions
+  debugStart: (filePath, language, code) =>
+    ipcRenderer.invoke('debug-start', { filePath, language, code }),
+
+  debugStop: (sessionId) =>
+    ipcRenderer.invoke('debug-stop', sessionId),
+
+  debugPause: (sessionId) =>
+    ipcRenderer.invoke('debug-pause', sessionId),
+
+  debugResume: (sessionId) =>
+    ipcRenderer.invoke('debug-resume', sessionId),
+
+  debugStepOver: (sessionId) =>
+    ipcRenderer.invoke('debug-step-over', sessionId),
+
+  debugStepInto: (sessionId) =>
+    ipcRenderer.invoke('debug-step-into', sessionId),
+
+  debugStepOut: (sessionId) =>
+    ipcRenderer.invoke('debug-step-out', sessionId),
+
+  debugContinue: (sessionId) =>
+    ipcRenderer.invoke('debug-continue', sessionId),
+
+  debugSetBreakpoint: (sessionId, filePath, line) =>
+    ipcRenderer.invoke('debug-set-breakpoint', { sessionId, filePath, line }),
+
+  debugRemoveBreakpoint: (sessionId, filePath, line) =>
+    ipcRenderer.invoke('debug-remove-breakpoint', { sessionId, filePath, line }),
+
+  debugGetVariables: (sessionId) =>
+    ipcRenderer.invoke('debug-get-variables', sessionId),
+
+  debugGetCallStack: (sessionId) =>
+    ipcRenderer.invoke('debug-get-call-stack', sessionId),
+
+  debugAddWatch: (sessionId, expression) =>
+    ipcRenderer.invoke('debug-add-watch', { sessionId, expression }),
+
+  debugRemoveWatch: (sessionId, expression) =>
+    ipcRenderer.invoke('debug-remove-watch', { sessionId, expression }),
+
+  // Terminal operation IPC functions
+  terminalCreate: (shell, cwd) =>
+    ipcRenderer.invoke('terminal-create', { shell, cwd }),
+
+  terminalWrite: (terminalId, data) =>
+    ipcRenderer.invoke('terminal-write', { terminalId, data }),
+
+  terminalResize: (terminalId, cols, rows) =>
+    ipcRenderer.invoke('terminal-resize', { terminalId, cols, rows }),
+
+  terminalKill: (terminalId) =>
+    ipcRenderer.invoke('terminal-kill', terminalId),
+
+  // Event listeners
+  onTerminalData: (callback) => {
+    ipcRenderer.on('terminal-data', (event, data) => callback(data));
+  },
+
+  onDebugSessionStarted: (callback) => {
+    ipcRenderer.on('debug-session-started', (event, data) => callback(data));
+  },
+
+  onDebugSessionStopped: (callback) => {
+    ipcRenderer.on('debug-session-stopped', (event, data) => callback(data));
+  },
+
+  onDebugStepCompleted: (callback) => {
+    ipcRenderer.on('debug-step-completed', (event, data) => callback(data));
+  },
+
+  onDebugBreakpointSet: (callback) => {
+    ipcRenderer.on('debug-breakpoint-set', (event, data) => callback(data));
+  },
+
+  onDebugBreakpointRemoved: (callback) => {
+    ipcRenderer.on('debug-breakpoint-removed', (event, data) => callback(data));
+  },
+
+  removeTerminalListeners: () => {
+    ipcRenderer.removeAllListeners('terminal-data');
+  },
+
+  removeDebugListeners: () => {
+    ipcRenderer.removeAllListeners('debug-session-started');
+    ipcRenderer.removeAllListeners('debug-session-stopped');
+    ipcRenderer.removeAllListeners('debug-step-completed');
+    ipcRenderer.removeAllListeners('debug-breakpoint-set');
+    ipcRenderer.removeAllListeners('debug-breakpoint-removed');
+  },
+
+  // Window management
+  allowWindowClose: () =>
+    ipcRenderer.invoke('allow-window-close'),
+
+  onUnsavedChangesCheck: (callback) => {
+    ipcRenderer.on('unsaved-changes-check', () => callback());
+  },
+
+  removeUnsavedChangesListener: () => {
+    ipcRenderer.removeAllListeners('unsaved-changes-check');
+  },
+
+  // Settings
+  getSettings: () => 
+    ipcRenderer.invoke('get-settings'),
+  
+    saveSettings: (settings) => 
+      ipcRenderer.invoke('save-settings', settings),
+  
+  testConnection: (url) => 
+    ipcRenderer.invoke('test-connection', { url }),
+  
   // File operation IPC functions
   renameFile: (filePath, newPath) =>
     ipcRenderer.invoke('rename-file', filePath, newPath),

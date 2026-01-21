@@ -31,6 +31,21 @@ const {
 const { updateCacheConfig } = require('./core/cache');
 const logger = require('./core/logger');
 
+// Handle unhandled promise rejections to prevent app crashes
+process.on('unhandledRejection', (reason, promise) => {
+  logger.warn('Unhandled promise rejection', { 
+    reason: reason?.message || reason,
+    stack: reason?.stack 
+  });
+  // Don't crash the app - just log the error
+});
+
+// Handle uncaught exceptions to prevent app crashes  
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught exception', { error: error.message, stack: error.stack });
+  // Don't crash the app - just log the error
+});
+
 let mainWindow;
 let orchestrator;
 let settingsManager;
@@ -119,23 +134,36 @@ app.whenReady().then(async () => {
   logger.info('Initializing PolyCouncil orchestrator', {
     url: settings.lmstudioUrl || 'default'
   });
-  orchestrator = new PolyCouncilOrchestrator(settings.lmstudioUrl);
-  try {
-    // Pass selected models from settings to orchestrator
-    const selectedModels = settings.selectedModels || [];
-    logger.debug('Initializing orchestrator with models', { modelCount: selectedModels.length });
-    await orchestrator.initialize(selectedModels);
+  // Create orchestrator with full LMStudio URL including port
+  const lmstudioUrl = settingsManager.getLmstudioUrl();
+  logger.info('Initializing PolyCouncil orchestrator', { url: lmstudioUrl });
+  orchestrator = new PolyCouncilOrchestrator(lmstudioUrl);
+  
+  // Initialize orchestrator with graceful error handling
+  // The app should work even if LMStudio is not accessible
+  (async () => {
+    try {
+      // Pass selected models from settings to orchestrator
+      const selectedModels = settings.selectedModels || [];
+      logger.debug('Initializing orchestrator with models', { modelCount: selectedModels.length });
+      await orchestrator.initialize(selectedModels);
 
-    // If models were selected, configure them
-    if (selectedModels.length > 0) {
-      logger.debug('Configuring orchestrator models', { models: selectedModels });
-      await orchestrator.configureModels({ models: selectedModels });
+      // If models were selected, configure them
+      if (selectedModels.length > 0) {
+        logger.debug('Configuring orchestrator models', { models: selectedModels });
+        await orchestrator.configureModels({ models: selectedModels });
+      }
+
+      logger.info('PolyCouncil orchestrator initialized successfully');
+    } catch (error) {
+      // Log but don't crash - the app can work without LMStudio
+      logger.warn('Orchestrator initialization failed - app will continue without AI features', { 
+        error: error.message,
+        hint: 'Make sure LMStudio is running and models are loaded'
+      });
+      // Don't re-throw - allow app to continue
     }
-
-    logger.info('PolyCouncil orchestrator initialized successfully');
-  } catch (error) {
-    logger.error('Failed to initialize orchestrator', { error: error.message, stack: error.stack });
-  }
+  })();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -296,7 +324,11 @@ ipcMain.handle('get-models', async () => {
     const models = await orchestrator.getAvailableModels();
     return { success: true, data: models };
   } catch (error) {
-    return { success: false, error: error.message };
+    // Return empty models list if LMStudio is not accessible
+    logger.warn('Failed to get models from LMStudio - this is expected if LMStudio is not running', { 
+      error: error.message 
+    });
+    return { success: true, data: [] };
   }
 });
 

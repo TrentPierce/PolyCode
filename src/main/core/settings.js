@@ -9,12 +9,35 @@ class SettingsManager {
   constructor() {
     this.settingsPath = path.join(app.getPath('userData'), 'settings.json');
     this.defaultSettings = {
-      lmstudioUrl: 'http://localhost:1234',
+      lmstudioUrl: 'http://localhost',
+      lmstudioPort: '1234',
       autoConnect: true,
       timeout: 120000,
       selectedModels: [] // Array of model IDs to use
     };
     this.settings = this.loadSettings();
+  }
+
+  /**
+   * Get LMStudio URL with port
+   * Constructs full URL from hostname and port settings
+   */
+  getLmstudioUrl() {
+    const hostname = this.settings.lmstudioUrl || this.defaultSettings.lmstudioUrl;
+    const port = this.settings.lmstudioPort || this.defaultSettings.lmstudioPort;
+    
+    // Ensure protocol
+    let url = hostname;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'http://' + url;
+    }
+    
+    // Add port (always add it since it's the default)
+    if (port && port.trim() !== '') {
+      url = `${url}:${port}`;
+    }
+    
+    return url;
   }
 
   /**

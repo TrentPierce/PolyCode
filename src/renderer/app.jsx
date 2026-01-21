@@ -22,6 +22,8 @@ import { useStore } from './store';
 import './styles/main.css';
 
 function App() {
+  console.log('App component rendering...');
+  
   // Select state from store
   const files = useStore(state => state.files.fileContents);
   const activeFile = useStore(state => state.files.activeFile);
@@ -180,6 +182,7 @@ function App() {
       loadDebugBreakpoints();
     };
 
+    // Register debug event listeners
     window.electronAPI.onDebugSessionStarted?.(handleDebugSessionStarted);
     window.electronAPI.onDebugSessionStopped?.(handleDebugSessionStopped);
     window.electronAPI.onDebugStepCompleted?.(handleDebugStepCompleted);
@@ -217,12 +220,12 @@ function App() {
       const result = await window.electronAPI.getModels();
       if (result.success) {
         setModels(result.data);
-        setAiConnected(true);
+        setAiConnectedAction(true);
       } else {
-        setAiConnected(false);
+        setAiConnectedAction(false);
       }
     } catch (error) {
-      setAiConnected(false);
+      setAiConnectedAction(false);
     }
   };
 
@@ -1117,38 +1120,36 @@ function App() {
               </button>
             </div>
           </div>
-          {activeTab === 'editor' ? (
-            activeFile ? (
-              <Editor
-                filePath={activeFile}
-                content={files[activeFile] || ''}
-                previousContent={fileVersions[activeFile]}
-                language={language}
-                onSave={handleFileSave}
-                onContentChange={(content) => handleEditorContentChange(activeFile, content)}
-                onRun={handleRunCode}
-                isDirty={dirtyFiles[activeFile] || false}
-                onDirtyChange={(isDirty) => handleDirtyChange(activeFile, isDirty)}
-                onSnippetInsert={handleSnippetSelect}
-                debugSession={debugSession}
-                onBreakpointToggle={handleBreakpointToggle}
-                onBreakpointRemove={handleBreakpointRemove}
-              />
-            ) : (
-              <div className="welcome-screen">
-                <h1>PolyCode IDE</h1>
-                <p>AI-Powered IDE with Multi-Model Deliberation</p>
-                <p className="status">
-                  {isConnected ? '✓ Connected to LMStudio' : '✗ LMStudio not connected'}
-                </p>
-                <p className="hint">Open a file or create a new one to get started</p>
-              </div>
-            )
-          ) : (
+          {activeTab === 'editor' && activeFile ? (
+            <Editor
+              filePath={activeFile}
+              content={files[activeFile] || ''}
+              previousContent={fileVersions[activeFile]}
+              language={language}
+              onSave={handleFileSave}
+              onContentChange={(content) => handleEditorContentChange(activeFile, content)}
+              onRun={handleRunCode}
+              isDirty={dirtyFiles[activeFile] || false}
+              onDirtyChange={(isDirty) => handleDirtyChange(activeFile, isDirty)}
+              onSnippetInsert={handleSnippetSelect}
+              debugSession={debugSession}
+              onBreakpointToggle={handleBreakpointToggle}
+              onBreakpointRemove={handleBreakpointRemove}
+            />
+          ) : activeTab === 'deliberation' ? (
             <DeliberationChat
               messages={deliberationMessages}
               isActive={activeTab === 'deliberation'}
             />
+          ) : (
+            <div className="welcome-screen">
+              <h1>PolyCode IDE</h1>
+              <p>AI-Powered IDE with Multi-Model Deliberation</p>
+              <p className="status">
+                {isConnected ? '✓ Connected to LMStudio' : '✗ LMStudio not connected'}
+              </p>
+              <p className="hint">Open a file or create a new one to get started</p>
+            </div>
           )}
         </div>
         <DebugToolbar

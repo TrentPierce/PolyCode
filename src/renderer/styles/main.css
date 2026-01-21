@@ -1,19 +1,24 @@
 /* Main App Styles */
 .app-container {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;  /* Side-by-side layout */
   height: 100vh;
+  width: 100vw;
   background: #1e1e1e;
   color: #d4d4d4;
+  overflow: hidden;  /* Prevent scrolling on container */
 }
 
 /* Sidebar Layout */
 .app-container > .sidebar {
-  width: 300px;
+  width: 280px;
+  min-width: 200px;
+  max-width: 400px;
   background: #252526;
   border-right: 1px solid #3e3e42;
   overflow-y: auto;
   flex-shrink: 0;
+  height: 100%;
 }
 
 /* Main Content Area */
@@ -22,6 +27,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-width: 0;  /* Prevent flex item from overflowing */
 }
 
 /* Modal Styles */
